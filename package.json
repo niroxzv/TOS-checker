@@ -13,8 +13,6 @@
     "build": "node scripts/build-web.ts",
     "serve": "node scripts/serve.ts",
     "dev": "npm run build && npm run serve",
-    "desktop": "tauri dev",
-    "desktop:build": "tauri build",
     "eval:fetch": "node eval/fetch-unfair-tos.ts",
     "eval": "node eval/eval-unfair-tos.ts",
     "eval:ai": "node eval/eval-ai.ts",

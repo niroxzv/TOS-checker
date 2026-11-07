@@ -1,4 +1,4 @@
-// Builds the browser versions of the desktop UI and the extension, with no dependencies:
+// Builds the web app and the extension, with no dependencies:
 // Node's built-in stripTypeScriptTypes removes the types, and `.ts` imports become `.js`.
 //
 //   dist/app/        <- app/        and dist/app/src/        <- src/  (minus the Node-only cli.ts)

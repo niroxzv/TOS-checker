@@ -1,4 +1,4 @@
-// Serves dist/app at http://127.0.0.1:5173 for development (and for `tauri dev`). Run `npm run build` first.
+// Serves dist/app at http://127.0.0.1:5173 for development. Run `npm run build` first.
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize, sep } from "node:path";

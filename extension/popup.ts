@@ -42,7 +42,7 @@ interface Hit {
   doc: Doc;
 }
 
-/** Shared with the desktop app. */
+/** Same key and shape as the web app. */
 const PREFS_KEY = "tos-checker.prefs";
 /** Flags of each document at its last check, for "changed since you checked". */
 const SEEN_KEY = "tickwise.seen";

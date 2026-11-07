@@ -9,12 +9,10 @@ type Choice = "ok" | "notok";
 type Prefs = Record<string, Choice>;
 
 interface Settings {
-  /** Where the AI server is, e.g. Ollama's "http://127.0.0.1:11434". Blank: llama-server on `port`. */
+  /** Where the AI server is, e.g. Ollama's "http://127.0.0.1:11434". Blank: llama-server's usual address. */
   aiUrl: string;
   /** Model name to ask for, e.g. "qwen3.5:9b". Blank: the AI module picks one. */
   aiModel: string;
-  /** Desktop only: the port llama-server listens on. Its files are picked in a dialog and kept by the desktop app. */
-  port: number;
   aiMode: boolean;
 }
 
@@ -41,13 +39,11 @@ interface AiModule {
   findAiServer(opts?: AiOptions): Promise<string | null>;
   analyzeWithAi(text: string, ruleFlags: Flag[], opts?: AiOptions): Promise<AiResult>;
 }
-interface TauriGlobal { core: { invoke(cmd: string, args?: Record<string, unknown>): Promise<unknown> } }
-/** The llama-server and model file picked in the desktop app (null until picked). */
-interface AiFiles { server: string | null; model: string | null }
-
 const PREFS_KEY = "tos-checker.prefs";
 const SETTINGS_KEY = "tos-checker.settings";
-const DEFAULT_SETTINGS: Settings = { aiUrl: "", aiModel: "", port: 8080, aiMode: false };
+const DEFAULT_SETTINGS: Settings = { aiUrl: "", aiModel: "", aiMode: false };
+/** llama-server's usual address, used when the server URL is blank. */
+const LOCAL_URL = "http://127.0.0.1:8080";
 const SEVERITIES: Severity[] = ["high", "medium", "low", "info"];
 const SEVERITY_LABEL: Record<Severity, string> = { high: "High", medium: "Medium", low: "Low", info: "Info" };
 const CATEGORY_LABEL: Record<Category, string> = {
@@ -107,10 +103,6 @@ function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-function getTauri(): TauriGlobal | undefined {
-  return (window as unknown as { __TAURI__?: TauriGlobal }).__TAURI__;
-}
-
 const input = byId<HTMLTextAreaElement>("tos-input");
 const fileInput = byId<HTMLInputElement>("file-input");
 const statusEl = byId("status");
@@ -121,12 +113,6 @@ const cardsEl = byId("cards");
 const docEl = byId("doc");
 const docCountEl = byId("doc-count");
 const aiToggle = byId<HTMLInputElement>("ai-mode");
-const settingsEl = byId<HTMLDetailsElement>("settings");
-const pickServer = byId<HTMLButtonElement>("pick-server");
-const pickModel = byId<HTMLButtonElement>("pick-model");
-const serverFileEl = byId("server-file");
-const modelFileEl = byId("model-file");
-const setPort = byId<HTMLInputElement>("set-port");
 const setAiUrl = byId<HTMLInputElement>("set-ai-url");
 const setAiModel = byId<HTMLInputElement>("set-ai-model");
 const aiUrlEl = byId("ai-url");
@@ -141,18 +127,8 @@ let markIdByKey = new Map<string, string>();
 let aiRun: AbortController | null = null;
 let aiModule: AiModule | null = null;
 
-function port(): number {
-  const p = Math.trunc(Number(settings.port));
-  return p > 0 && p < 65536 ? p : 8080;
-}
-
-/** Where a llama-server started by the desktop app listens. */
-function localUrl(): string {
-  return `http://127.0.0.1:${port()}`;
-}
-
 function baseUrl(): string {
-  return String(settings.aiUrl || "").trim().replace(/\/+$/, "") || localUrl();
+  return String(settings.aiUrl || "").trim().replace(/\/+$/, "") || LOCAL_URL;
 }
 
 function status(text: string): void {
@@ -370,16 +346,10 @@ function showAiHelp(reason: string): void {
   aiBox.hidden = false;
   aiBox.className = "ai-box is-help";
   const how = h("p", "muted");
-  if (getTauri()) {
-    how.append("Start Ollama, or set the llama-server and model paths in AI settings and press Start AI.");
-  } else {
-    how.append("Start Ollama with a model (for example ", h("code", "", "ollama pull qwen3.5:4b"),
-      ") or a llama.cpp server (", h("code", "", `llama-server -m model.gguf --port ${port()}`),
-      "), or set the server URL in AI settings, then press Retry.");
-  }
-  how.append(" The rule-based results below don't need it.");
+  how.append("Start Ollama with a model (for example ", h("code", "", "ollama pull qwen3.5:4b"),
+    ") or a llama.cpp server (", h("code", "", "llama-server -m model.gguf --port 8080"),
+    "), or set the server URL in AI settings, then press Retry. The rule-based results below don't need it.");
   const actions = h("div", "actions");
-  if (getTauri()) actions.append(button("Start AI", "primary", () => void startAi()));
   actions.append(button("Retry", "", () => void runAi()));
   aiBox.replaceChildren(h("h2", "", "AI isn't running"), h("p", "", reason), how, actions);
 }
@@ -421,36 +391,6 @@ async function runAi(): Promise<void> {
   } catch (err) {
     if (!run.signal.aborted) showAiHelp(`The AI check failed: ${errorText(err)}`);
   }
-}
-
-async function startAi(): Promise<void> {
-  const tauri = getTauri();
-  if (!tauri) return;
-  const files = (await tauri.core.invoke("ai_files").catch(() => null)) as AiFiles | null;
-  if (!files?.server || !files.model) {
-    settingsEl.open = true;
-    (files?.server ? pickModel : pickServer).focus();
-    return showAiHelp("Choose llama-server and the model file in AI settings first.");
-  }
-  showAiLoading("Starting the local AI. Loading the model can take a minute...");
-  try {
-    // The desktop app runs only the files picked in its own dialog; the window sends just the port.
-    await tauri.core.invoke("start_ai", { port: port() });
-  } catch (err) {
-    return showAiHelp(`Couldn't start the AI: ${errorText(err)}`);
-  }
-  // invoke returns once the process starts; wait for the model to answer.
-  const ai = await loadAi();
-  for (let i = 0; ai && i < 60; i++) {
-    if (await ai.isAiAvailable({ baseUrl: localUrl() }).catch(() => false)) {
-      if (checkedText) return runAi();
-      aiBox.hidden = true;
-      status("The AI is running. Press Check.");
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  showAiHelp("The AI server started but didn't answer within 60 seconds. Check the paths in AI settings.");
 }
 
 // ---------- input ----------
@@ -499,44 +439,20 @@ input.addEventListener("keydown", (e) => {
 function saveSettings(): void {
   settings.aiUrl = setAiUrl.value.trim();
   settings.aiModel = setAiModel.value.trim();
-  settings.port = Number(setPort.value);
-  settings.port = port();
   save(SETTINGS_KEY, settings);
   showSettings();
 }
 
 function showSettings(): void {
   aiUrlEl.textContent = baseUrl();
-  setAiUrl.placeholder = localUrl();
+  setAiUrl.placeholder = LOCAL_URL;
 }
-
-function showAiFiles(files: AiFiles | null): void {
-  serverFileEl.textContent = files?.server ?? "Not chosen";
-  modelFileEl.textContent = files?.model ?? "Not chosen";
-}
-
-/** Desktop only: the app opens its own file dialog and keeps the file; the window never sends a path. */
-async function pickAiFile(which: "server" | "model"): Promise<void> {
-  const tauri = getTauri();
-  if (!tauri) return;
-  try {
-    showAiFiles((await tauri.core.invoke("pick_ai_file", { which })) as AiFiles);
-  } catch (err) {
-    status(`Couldn't choose the file: ${errorText(err)}`);
-  }
-}
-
-pickServer.addEventListener("click", () => pickAiFile("server"));
-pickModel.addEventListener("click", () => pickAiFile("model"));
-getTauri()?.core.invoke("ai_files").then((files) => showAiFiles(files as AiFiles), () => {});
 
 setAiUrl.value = String(settings.aiUrl || "");
 setAiModel.value = String(settings.aiModel || "");
-setPort.value = String(port());
 showSettings();
 aiToggle.checked = Boolean(settings.aiMode);
-document.body.classList.toggle("has-tauri", Boolean(getTauri()));
-for (const el of [setAiUrl, setAiModel, setPort]) el.addEventListener("change", saveSettings);
+for (const el of [setAiUrl, setAiModel]) el.addEventListener("change", saveSettings);
 
 aiToggle.addEventListener("change", () => {
   settings.aiMode = aiToggle.checked;

@@ -1,7 +1,6 @@
 node_modules/
 eval/data/
 dist/
-src-tauri/target/
 .claude/
 *.zip
 *.mp4

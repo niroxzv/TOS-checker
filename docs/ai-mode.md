@@ -41,7 +41,7 @@ npm run eval:ai-docs -- qwen3.5:4b
    .\llama-server.exe -m C:\models\model.gguf -c 8192 --port 8080
    ```
 
-4. Wait until `http://127.0.0.1:8080/health` returns 200 (it's 503 while the model loads). The app's default server URL is this one. The desktop app can also start llama-server for you (AI settings: llama-server path, model file, port).
+4. Wait until `http://127.0.0.1:8080/health` returns 200 (it's 503 while the model loads). The app's default server URL is this one.
 
 > The llama-server route is **not tested on a real server yet**, only against a fake one in `test/ai.test.ts`.
 

@@ -21,12 +21,11 @@ Not legal advice.
 | `src/model.ts`, `src/model-weights.ts` | Small trained model (logistic regression) that confirms or adds the 8 benchmark clause types |
 | `src/advice.ts`, `src/score.ts` | Add / Check / Tell advice for each rule, and the boundary score |
 | `src/ai/` | AI mode: talks to a local `llama-server`, checks every quote |
-| `app/` | Desktop UI (plain HTML/CSS/TS) |
-| `src-tauri/` | Tauri desktop shell for Windows; starts and stops `llama-server` |
+| `app/` | Web app: paste or open a document (plain HTML/CSS/TS) |
 | `extension/` | Browser extension (Firefox, Edge, Chrome) that checks the page you're on |
 | `scripts/` | Zero-dependency build (strips types) and dev server |
 | `test/`, `eval/` | Unit tests, and scoring against the UNFAIR-ToS dataset |
-| `docs/` | Setup guides for AI mode, the desktop app and the extension |
+| `docs/` | Setup guides for AI mode and the extension |
 
 ## Run it
 
@@ -38,9 +37,8 @@ npm run analyze -- samples/sample-tos.txt
 npm run dev
 ```
 
-`npm run dev` builds the UI and serves it at http://127.0.0.1:5173. `npm run build` writes `dist/app/` (desktop UI), `dist/extension/` (load it unpacked in Edge or Chrome) and `dist/firefox/` (load it in Firefox from about:debugging).
+`npm run dev` builds the UI and serves it at http://127.0.0.1:5173. `npm run build` writes `dist/app/` (web app), `dist/extension/` (load it unpacked in Edge or Chrome) and `dist/firefox/` (load it in Firefox from about:debugging).
 
-- Desktop app (Tauri): [docs/desktop.md](docs/desktop.md)
 - AI mode (Ollama or llama-server): [docs/ai-mode.md](docs/ai-mode.md)
 - Browser extension: [docs/extension.md](docs/extension.md)
 

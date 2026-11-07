@@ -75,10 +75,6 @@ button.primary:hover { background: var(--ink-2); color: var(--bg); }
 .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 12px; margin: 14px 0 10px; }
 .field { display: grid; gap: 6px; color: var(--muted); }
 .field input { font: 15px var(--serif); text-transform: none; letter-spacing: 0; color: var(--fg); background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 8px 12px; min-height: 44px; min-width: 0; }
-.pick { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.pick code { flex: 1; min-width: 0; font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--fg); }
-.pick button { flex: none; }
-body:not(.has-tauri) .tauri-only { display: none; }
 
 /* Output */
 .output { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 0 40px; align-items: start; }

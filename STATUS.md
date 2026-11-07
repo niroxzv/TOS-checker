@@ -13,7 +13,7 @@
 - [x] No slow patterns: 200 KB of hostile text (like "a.b.a.b." or thousands of blank lines) is checked in about 0.1 s. Before 7 Nov 2026 it took tens of seconds.
 - [x] All tests pass with `npm test` (204).
 
-### Desktop / web app (`app/`)
+### Web app (`app/`)
 - [x] Paste the terms, open a file, or try a sample, then press Check (or Ctrl+Enter).
 - [x] Tickwise look: ivory paper, Redaction serif, uppercase mono labels, a dark score band with a verdict pill and a High / Med / Low tally, coral severity pills. Fonts are bundled, so nothing loads from the internet.
 - [x] Each flag shows what it means, the exact quote, Add / Check / Tell, and Approve / Not OK buttons. Your choices are saved and the score updates.
@@ -56,7 +56,7 @@
   | AI only (qwen3.5:9b) | 71.4% | 89.8% | 79.5% | 22.1% |
 
   The AI catches more, with higher recall, but wrongly flags about 1 in 5 fair sentences. That's why AI mode only **adds** checked points on top of the no-AI flags and never replaces them. The full table is in `eval/results-ai-test.txt`. It was measured before the 8 Nov 2026 rule changes, which moved the no-AI test scores by under one point.
-- [ ] Not done: the full 1,607-sentence AI run, any benchmark with 4b, and a real llama-server or the desktop (Tauri) flow.
+- [ ] Not done: the full 1,607-sentence AI run, any benchmark with 4b, and a real llama-server.
 
 ### Demo video
 - [x] `scripts/record-demo.ts` records a captioned demo video in Edge, with no extra tools (`HEADED=1` to watch, `SPEED=2` for double speed).
@@ -85,8 +85,7 @@
 
 - [ ] Try the extension by hand in Firefox (about:debugging) and Chrome. The Firefox test drives the add-on from a script, and Chrome isn't installed here.
 - [ ] Submit the Firefox build to addons.mozilla.org, so it installs and updates like any other add-on. Steps: `docs/extension.md`.
-- [ ] **Desktop build (Tauri).** This needs Rust and app icons (`npx tauri icon`). Untested.
-- [x] **Desktop: limit what `start_ai` runs** (8 Nov 2026, code only). The window no longer sends a program path: the user picks llama-server and the model in the app's own file dialog (`pick_ai_file`), and `start_ai` takes only a port. The web UI side was checked in a browser with a stand-in for the desktop app. The Rust side has not been compiled yet (needs Rust).
+- [x] **Removed the desktop (Tauri) shell** (8 Nov 2026). It was never built or run. The project now focuses on the browser extension, with the web app for pasting or opening a document.
 - [x] Raise arbitration precision and unilateral-termination recall (8 Nov 2026, see "Accuracy").
 - [ ] More rules, for example children's data and in-app purchases.
 - [ ] Translate the advice into Chinese, Malay and Tamil.
