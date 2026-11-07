@@ -23,6 +23,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Readable, Writable } from "node:stream";
+import { originPatterns } from "../extension/lib.ts";
 
 const root = join(import.meta.dirname, "..");
 const EXTENSION_DIR = join(root, "dist", "extension");
@@ -534,7 +535,7 @@ async function run(port: number, signupUrl: string, setPrivacy: (version: number
   //    runs. A new origin makes the browser show a prompt, and nothing can answer that prompt in headless.
   //    So the origin is granted first, the way Site access on edge://extensions does it (developerPrivate);
   //    the request then resolves true without a prompt and the button's own code reads the page.
-  const granted = await grantHost(`${legalOrigin}/*`);
+  const granted = await grantHost(originPatterns(`${legalOrigin}/cookies`));
   check("Cookie Policy origin granted through the extensions page", granted === true, String(granted));
   const servedBefore = served.length;
   await click(a.sessionId, "button.primary");
@@ -688,12 +689,18 @@ async function run(port: number, signupUrl: string, setPrivacy: (version: number
   if (pagePng && popupTop) await composite(pagePng, popupTop, "extension-in-context.png");
 }
 
-/** Grants a host to the extension the way Site access on edge://extensions does. Test-only. */
-async function grantHost(pattern: string): Promise<true | string> {
+/** Grants hosts to the extension the way Site access on edge://extensions does. Test-only. */
+async function grantHost(patterns: string[]): Promise<true | string> {
   // In the background: switching tabs would close the popup.
   const page = await openTab("edge://extensions/", true).catch(() => openTab("chrome://extensions/", true));
   try {
-    return await evaluate(page.sessionId, `new Promise((resolve) => chrome.developerPrivate.addHostPermission(${JSON.stringify(extensionId)}, ${JSON.stringify(pattern)}, () => resolve(chrome.runtime.lastError ? chrome.runtime.lastError.message : true)))`);
+    return await evaluate(page.sessionId, `(async () => {
+      for (const p of ${JSON.stringify(patterns)}) {
+        const err = await new Promise((resolve) => chrome.developerPrivate.addHostPermission(${JSON.stringify(extensionId)}, p, () => resolve(chrome.runtime.lastError ? chrome.runtime.lastError.message : null)));
+        if (err) return p + ": " + err;
+      }
+      return true;
+    })()`);
   } catch (err) {
     return err instanceof Error ? err.message : String(err);
   } finally {

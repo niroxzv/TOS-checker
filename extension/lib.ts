@@ -125,6 +125,17 @@ export function textFragmentUrl(href: string, quote: string): string {
   return `${href.split("#")[0]}#:~:text=${text}`;
 }
 
+/**
+ * The site permissions to ask for before reading a link from the popup. A plain-http link asks for http and
+ * https: Firefox sends an extension page's http requests as https (its default extension CSP has
+ * upgrade-insecure-requests), and a grant for http alone doesn't cover that request. Two patterns rather than
+ * one `*://` pattern, because Site access on chrome://extensions (which the browser tests use) refuses `*://`.
+ */
+export function originPatterns(href: string): string[] {
+  const url = new URL(href);
+  return url.protocol === "http:" ? [`http://${url.host}/*`, `https://${url.host}/*`] : [`${url.origin}/*`];
+}
+
 /** The toolbar badge after a check: the number of high-risk flags, in coral. */
 export function badgeFor(high: number): { text: string; title: string } {
   if (high === 0) return { text: "", title: "Tickwise: no high-risk flags here. Click to see the rest." };

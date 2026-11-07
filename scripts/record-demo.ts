@@ -19,6 +19,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, sep } from "node:path";
 import type { Readable, Writable } from "node:stream";
+import { originPatterns } from "../extension/lib.ts";
 import { Cdp, findBrowser, LEGAL, SITE, site } from "./test-extension.ts";
 
 const root = join(import.meta.dirname, "..");
@@ -166,10 +167,16 @@ async function screencast(sessionId: string, src: string, size = VIEW): Promise<
 }
 
 /** Grants a host to the extension the way Site access on edge://extensions does, so the demo skips the prompt. */
-async function grantHost(pattern: string): Promise<true | string> {
+async function grantHost(patterns: string[]): Promise<true | string> {
   const page = await openTab("edge://extensions/", true).catch(() => openTab("chrome://extensions/", true));
   try {
-    return await evaluate(page.sessionId, `new Promise((resolve) => chrome.developerPrivate.addHostPermission(${JSON.stringify(extensionId)}, ${JSON.stringify(pattern)}, () => resolve(chrome.runtime.lastError ? chrome.runtime.lastError.message : true)))`);
+    return await evaluate(page.sessionId, `(async () => {
+      for (const p of ${JSON.stringify(patterns)}) {
+        const err = await new Promise((resolve) => chrome.developerPrivate.addHostPermission(${JSON.stringify(extensionId)}, p, () => resolve(chrome.runtime.lastError ? chrome.runtime.lastError.message : null)));
+        if (err) return p + ": " + err;
+      }
+      return true;
+    })()`);
   } catch (err) {
     return err instanceof Error ? err.message : String(err);
   } finally {
@@ -345,7 +352,7 @@ async function demo(port: number): Promise<number> {
   }
 
   // Tab 2: the extension, on the made-up Snapnest sign-up page. Its Cookie Policy is on another site, allowed beforehand.
-  const granted = await grantHost(`http://${LEGAL}:${port}/*`);
+  const granted = await grantHost(originPatterns(`http://${LEGAL}:${port}/cookies`));
   if (granted !== true) console.log(`NOTE  couldn't pre-allow ${LEGAL}: ${granted}`);
   const page = await openTab(`http://${SITE}:${port}/signup`);
   await setupView(page.sessionId);
@@ -388,7 +395,7 @@ async function demo(port: number): Promise<number> {
 
 /** The default: the browser extension only, for a slide (about 20 s). */
 async function demoExtension(port: number): Promise<number> {
-  const granted = await grantHost(`http://${LEGAL}:${port}/*`);
+  const granted = await grantHost(originPatterns(`http://${LEGAL}:${port}/cookies`));
   if (granted !== true) console.log(`NOTE  couldn't pre-allow ${LEGAL}: ${granted}`);
   const page = await openTab(`http://${SITE}:${port}/signup`);
   const s = page.sessionId;
@@ -522,7 +529,7 @@ async function demoShort(port: number): Promise<number> {
     if (ok) await shot(s, "app-ai.png");
   }
 
-  const granted = await grantHost(`http://${LEGAL}:${port}/*`);
+  const granted = await grantHost(originPatterns(`http://${LEGAL}:${port}/cookies`));
   if (granted !== true) console.log(`NOTE  couldn't pre-allow ${LEGAL}: ${granted}`);
   const page = await openTab(`http://${SITE}:${port}/signup`);
   await setupView(page.sessionId);

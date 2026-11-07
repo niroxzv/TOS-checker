@@ -2,7 +2,7 @@ import { analyze } from "../src/engine.ts";
 import { boundaryScore } from "../src/score.ts";
 import { adviceFor } from "../src/advice.ts";
 import type { Category, Flag, Severity } from "../src/types.ts";
-import { badgeFor, compareSeen, flagKey, normalize, plural, pruneSeen, seenKey, textFragmentUrl, watchLine, type Seen } from "./lib.ts";
+import { badgeFor, compareSeen, flagKey, normalize, originPatterns, plural, pruneSeen, seenKey, textFragmentUrl, watchLine, type Seen } from "./lib.ts";
 
 /** Firefox has `browser` (promises everywhere); Chrome and Edge have `chrome`. */
 const ext: any = (globalThis as any).browser ?? (globalThis as any).chrome;
@@ -115,8 +115,10 @@ function grabPage(): PageData {
 }
 
 /**
- * Also runs inside the page, so it must be self-contained. Fetching from the page works for same-origin
- * links with no extra permissions. Returns the body for text responses, null for anything that failed.
+ * Also runs inside the page, so it must be self-contained. Fetching from the page works with no extra
+ * permissions for same-origin links and for sites that allow any origin (docs.github.com does). Other
+ * sites refuse, and the browser logs a CORS error in the page's console; those links go to the "Allow
+ * reading" list. Returns the body for text responses, null for anything that failed.
  */
 async function fetchInPage(urls: string[]): Promise<(string | null)[]> {
   return Promise.all(
@@ -276,7 +278,7 @@ async function alreadyAllowed(links: PageLink[]): Promise<PageLink[]> {
   const allowed: PageLink[] = [];
   for (const link of links) {
     try {
-      if (await ext.permissions.contains({ origins: [originPattern(link.href)] })) allowed.push(link);
+      if (await ext.permissions.contains({ origins: originPatterns(link.href) })) allowed.push(link);
     } catch {
       // Ignore; the link stays failed.
     }
@@ -534,7 +536,7 @@ function failedBlock(): HTMLElement {
     );
   }
   const allow = plainButton(`Allow reading ${plural(failed.length, "more page")}`, async () => {
-    const origins = [...new Set(failed.map((l) => originPattern(l.href)))];
+    const origins = [...new Set(failed.flatMap((l) => originPatterns(l.href)))];
     let granted = false;
     try {
       // Must be called straight from the click, before any other await.
@@ -582,10 +584,6 @@ function describePage(p: PageData): string {
   } catch {
     return p.title;
   }
-}
-
-function originPattern(href: string): string {
-  return `${new URL(href).origin}/*`;
 }
 
 /** Host and path, shortened. A long host loses its start, not its end: the end names the real site. */

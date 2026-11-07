@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { badgeFor, compareSeen, dayLabel, flagKey, hash, pruneSeen, seenKey, textFragmentUrl, watchKey, watchLine, type Seen } from "../extension/lib.ts";
+import { badgeFor, compareSeen, dayLabel, flagKey, hash, originPatterns, pruneSeen, seenKey, textFragmentUrl, watchKey, watchLine, type Seen } from "../extension/lib.ts";
 
 const DAY = 86_400_000;
 const NOW = new Date(2026, 10, 7, 15, 0).getTime();
@@ -99,6 +99,16 @@ describe("textFragmentUrl", () => {
   });
   test("dashes and commas inside the text are escaped", () => {
     assert.equal(textFragmentUrl("https://x.com/p", "Opt-out by email, today."), "https://x.com/p#:~:text=Opt%2Dout%20by%20email%2C%20today.");
+  });
+});
+
+describe("originPatterns", () => {
+  test("an https link asks for its own site", () => {
+    assert.deepEqual(originPatterns("https://legal.example.com/terms?x=1#top"), ["https://legal.example.com/*"]);
+  });
+  test("a plain-http link asks for http and https, since Firefox upgrades the request", () => {
+    assert.deepEqual(originPatterns("http://legal.example.com/terms"), ["http://legal.example.com/*", "https://legal.example.com/*"]);
+    assert.deepEqual(originPatterns("http://legal.example.com:8080/terms"), ["http://legal.example.com:8080/*", "https://legal.example.com:8080/*"]);
   });
 });
 

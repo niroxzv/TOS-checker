@@ -28,16 +28,19 @@
 - [x] **Changes since your last check**: each document says "First check", "No change since you checked …" or "Changed since you checked …: N new flags, M gone", and new flags are marked New. It compares flags, not the full text, and only when you click the icon.
 - [x] **Linked pages** are fetched without cookies. Links to localhost and home-network addresses are skipped, and each document is checked up to 500,000 characters.
 - [x] **Firefox build** in `dist/firefox` (add-on ID `tickwise@niroxzv`, Firefox 140 or newer). `npm run pack:firefox` and `npm run pack:source` make the two zips addons.mozilla.org asks for.
-- [x] **Tested in real Microsoft Edge 157 and Chrome 157.** `npm run test:extension` passes 51 of 51 checks in Edge (7 Nov 2026) and in Chrome for Testing 157.0.8103.38 (8 Nov 2026). The harness loads the extension, opens the popup with a real toolbar click on a fake sign-up page, and checks:
+- [x] **Tested in real Microsoft Edge 157 and Chrome 157.** `npm run test:extension` passes 51 of 51 checks in Edge and in Chrome for Testing 157.0.8103.38 (8 Nov 2026). The harness loads the extension, opens the popup with a real toolbar click on a fake sign-up page, and checks:
   - the page, the selection and both linked pages, including one on another site after "Allow";
   - the merged report, "From: …" on every flag, and Not OK lowering the score;
   - the badge, the icons, Show on page and Open and show;
   - a Privacy Policy that changes between two checks;
   - linked pages fetched without the site's login cookie, and a link to `router.local` skipped.
-- [x] **Tested in real Firefox 159.** `npm run test:firefox` passes 9 of 9 checks (7 Nov 2026): install, the toolbar action, the report, the badge, and Show on page.
+- [x] **Tested in real Firefox 159.** `npm run test:firefox` passes 9 of 9 checks (8 Nov 2026): install, the toolbar action, the report, the badge, and Show on page.
+- [x] **Checked step by step in Firefox and Chrome** (8 Nov 2026), from a script with the screenshots checked by eye: the popup, dark and light mode, Show on page, Open and show, and Allow with the browser's own prompt. Details: `docs/extension.md`.
+  - It found a Firefox bug, now fixed: after Allow, a plain-http page on another site still couldn't be read, because Firefox sends the popup's request over https. Allow now asks for http and https.
+  - In Firefox, a terms page on another site that only works over plain http still can't be read from the popup.
 - [x] Popup restyled to the same Tickwise look, with the fonts bundled in the extension. Screenshots are in `docs/screenshots/`.
 - [x] `npm run pack:extension` builds `tickwise-extension.zip` for Edge and Chrome.
-- Not verified: answering the browser's own permission prompt, because headless Edge and Chrome can't click it. In real use, the popup closes when the prompt opens. Accept the prompt and click the icon again. That second step is verified.
+- Not verified: answering the browser's own permission prompt in Edge and Chrome, because headless Edge and Chrome can't click it. In real use, the popup closes when the prompt opens. Accept the prompt and click the icon again. That second step is verified. In Firefox the prompt was answered and the page read, in the step-by-step check only.
 - Flaky: the last step (Allow on a never-granted site) timed out in the test harness on 2 of 4 runs (6 Nov 2026); the other checks passed every time.
 
 ### AI mode (optional, local)
@@ -83,7 +86,7 @@
 
 ## To do
 
-- [ ] Try the extension by hand in Firefox (about:debugging) and Chrome. The Firefox and Chrome tests drive the extension from a script.
+- [x] Check the extension step by step in Firefox and Chrome (8 Nov 2026, see above). Still open: a person clicking the real toolbar button, since every run so far calls what the click runs.
 - [ ] Submit the Firefox build to addons.mozilla.org, so it installs and updates like any other add-on. Steps: `docs/extension.md`.
 - [x] **Removed the desktop (Tauri) shell** (8 Nov 2026). It was never built or run. The project now focuses on the browser extension, with the web app for pasting or opening a document.
 - [x] Raise arbitration precision and unilateral-termination recall (8 Nov 2026, see "Accuracy").

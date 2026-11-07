@@ -55,6 +55,8 @@ After changing the code, run `npm run build` again and click **Reload** on the e
 - **Selected text**: if you selected more than 200 characters, that's checked as its own document and listed first.
 - **Linked pages**: up to 8 links that look like Terms, Privacy, Cookie or legal pages are fetched from inside the page, so pages on the same site need no extra permission. They're fetched without cookies: a terms page doesn't need your login, and a link that does something when opened (say, "Accept cookies") does nothing logged out. Links to your own machine or home network (`localhost`, `192.168.x.x`, `.local` names and similar) are skipped, unless the page you're on is on one too.
 - **Other sites**: the request to a link on another origin is still sent, but the browser usually won't let the page read the answer. (It can, when that site lets any website read it with `Access-Control-Allow-Origin: *`.) Unread links are listed under "Linked pages we couldn't read" with an **Allow reading N more pages** button, which asks for those origins (`optional_host_permissions`). Once you allow an origin, it's read straight away every time, also without cookies.
+  - In Edge and Chrome the popup closes when the browser's prompt opens: accept it, then click the icon again. In Firefox the popup stays open and reads the page as soon as you accept.
+  - For a plain-http link it asks for that site over http and https, because Firefox sends the extension's request over https (`upgrade-insecure-requests` in its default extension policy). So in Firefox, a terms page on another site that only works over plain http can't be read this way.
 - **Very long pages**: each document is checked up to its first 500,000 characters (long terms run to about 300,000), and the list says when one was cut.
 - **One report**: the boundary score band (its colour is the verdict), "Checked N documents" with a flag count for each, then one card per flag with severity, category, the plain-English point, the quote, **From: <document>**, **Add / Check / Tell**, and **Approve / Not OK**.
 - **Show on page**: on a flag from the page you're on, scrolls the page to that sentence and highlights it in lime (the CSS Custom Highlight API; the browser selects the sentence instead if it doesn't have that API). The highlight stays until the page reloads. If the page changed since the check, the button says "Not found on page".
@@ -83,7 +85,7 @@ Both use no dependencies. On Windows, run them from PowerShell or cmd. Edge laun
 3. Clicks the toolbar button with `Extensions.triggerAction` (a real action click, so `activeTab` applies), attaches to the popup and checks the report. Then it clicks **Allow**, **Not OK**, **Show on page** and **Open and show**, selects text, changes the Privacy Policy between visits, and opens a browser page. The site sets a login cookie, so the test can check that linked pages are fetched without it, and the footer links to `router.local`, which must be skipped.
 4. Saves the screenshots in `docs/screenshots/`.
 
-It passes 51 of 51 checks in Edge 157 (7 Nov 2026) and in Chrome for Testing 157.0.8103.38 (8 Nov 2026). The Chrome run used [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/), Google's Chrome build for automated tests. To repeat it, unzip it and set `BROWSER` to its `chrome.exe`.
+It passes 51 of 51 checks in Edge 157 and in Chrome for Testing 157.0.8103.38 (8 Nov 2026). The Chrome run used [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/), Google's Chrome build for automated tests. To repeat it, unzip it and set `BROWSER` to its `chrome.exe`.
 
 Options: `BROWSER=<path to msedge.exe or chrome.exe>`, `PROFILE_DIR=<folder>` to use a profile folder of your own (kept afterwards; never point it at your real browser profile), `HEADED=1` to watch, `NO_SHOTS=1` to skip screenshots. It exits with code 1 if any check fails.
 
@@ -96,9 +98,11 @@ Options: `BROWSER=<path to msedge.exe or chrome.exe>`, `PROFILE_DIR=<folder>` to
 
 It's shorter than the Edge test, because Allow, Not OK, selected text and terms changes run the same code. Options: `FIREFOX=<path to firefox.exe>`, `HEADED=1`.
 
+Firefox 159 sometimes never finishes starting with a new profile (WebDriver BiDi doesn't answer). A good start answers in about 2 seconds, so the script stops Firefox after 15 seconds and starts it again, up to 5 times.
+
 ## Tested on
 
-**Microsoft Edge 157.0.4341.42, Windows 11, headless, 7 November 2026: 51 of 51 checks pass.**
+**Microsoft Edge 157.0.4341.42, Windows 11, headless, 8 November 2026: 51 of 51 checks pass.**
 
 Verified in the real browser:
 - The extension loads unpacked with its icons, and the toolbar click opens the popup with no console errors.
@@ -115,7 +119,7 @@ Verified in the real browser:
 - Cookies: the site sets a login cookie, and all 12 fetches of linked pages (from the page and from the popup) go out without it, while opening a page in a tab still sends it. With `credentials: "omit"` taken out of the built popup, Edge sent the cookie on every one of those fetches, including to the allowed site, so the check does catch it.
 - A footer link to `router.local` (your own network) is skipped: never requested, never listed.
 
-**Firefox 159.0.1 (Microsoft Store build), Windows 11, headless, 7 November 2026: 9 of 9 checks pass.**
+**Firefox 159.0.1 (Microsoft Store build), Windows 11, headless, 8 November 2026: 9 of 9 checks pass.**
 
 - Firefox installs `dist/firefox` (manifest, add-on ID and data declaration accepted).
 - The toolbar action opens the popup with the same report as in Edge (score 26, 19 flags on the first check), reads this page and the Privacy Policy, and lists the Cookie Policy for Allow.
@@ -123,14 +127,25 @@ Verified in the real browser:
 - Show on page highlights the arbitration sentence with Firefox's CSS Custom Highlight API and scrolls it into view.
 - No errors from the add-on. Firefox logs the blocked cross-origin read of the Cookie Policy, which is expected, since that page waits for Allow.
 
+**Step-by-step checks in Firefox 159.0.1 and Chrome for Testing 157, 8 November 2026.** Each step was run from a script (browsers can't be clicked with a real mouse in this setup), and the screenshots were checked by eye.
+
+- Firefox, headless, screenshots taken inside the browser:
+  - The popup opens in about a second at 380 × 600 with no sideways scrolling. Firefox puts the button in the Extensions (puzzle piece) menu at first, like any new add-on.
+  - The report, the badge (4) and its tooltip match Edge. Dark and light mode both look right.
+  - Show on page highlights the arbitration sentence and the popup stays open. Open and show opens the Privacy Policy at the sentence, and Firefox highlights it in yellow.
+  - Allow: Firefox's own prompt opens ("Access your data for sites in policies.snapnest.test domains") with the popup still open. After clicking the prompt's Allow, the same popup reads the Cookie Policy (3 documents, 21 flags, nothing unread), and so does the next click on the icon.
+  - Linked pages go out without the site's cookie (page loads do send it), and `router.local` is never requested.
+  - This run found a bug, now fixed: the Allow grant covered `http://` only, but Firefox sent the popup's request over https, so the page still couldn't be read. Allow now asks for http and https (see "Other sites" above). The old build fails this check and the new one passes.
+- Chrome for Testing, in a window:
+  - The popup opens in about a second, dark mode looks right, Show on page highlights the sentence, and Open and show opens the page with Chrome's own text-fragment highlight.
+  - Allow closes the popup and opens Chrome's prompt ('"Tickwise" has requested additional permissions. It could: Read and change your data on policies.snapnest.test'). The prompt wasn't answered, and this run used the build from before the Allow fix. The automated test passes 51 of 51 with the fix.
+
 Not verified, and why:
-- **Answering the permission prompt.** Headless Edge can't show or click the browser's own prompt. The Edge test grants the origin the way Site access on edge://extensions does (`chrome.developerPrivate.addHostPermission`), then clicks Allow. On an origin that was never granted, the Allow click does open the prompt: Edge closes the popup as the prompt takes focus. So for a real user: click **Allow**, accept the prompt, then click the icon again, and the page is read straight away. That last step is verified. In Firefox, Allow isn't tested.
-- **Whether the browser highlights an Open and show sentence.** The test checks the new tab's address, not what the browser draws.
-- **Cookies and the local-network skip in Firefox.** Only the Edge test checks them; the code is the same.
-- **Firefox through a real mouse click.** The Firefox test calls what the click runs, not the click itself, and reads the popup through a frame script. Loading it by hand from about:debugging is the last check.
+- **Answering the permission prompt in Edge and Chrome.** Headless Edge can't show or click the browser's own prompt. The Edge test grants the origin the way Site access on edge://extensions does (`chrome.developerPrivate.addHostPermission`), then clicks Allow. On an origin that was never granted, the Allow click does open the prompt: Edge closes the popup as the prompt takes focus. So for a real user: click **Allow**, accept the prompt, then click the icon again, and the page is read straight away. That last step is verified. In Firefox the prompt was answered (above), but only in the step-by-step check: `npm run test:firefox` doesn't test Allow, since it needs https and port-less addresses.
+- **A real mouse click on the toolbar.** Every run calls what the click runs (`triggerAction`), not the click itself.
 - **Publishing.** AMO's own validator hasn't seen the zip. It runs when you upload.
-- **The popup's own window size.** Headless Edge keeps the popup at the height of its first "Reading…" frame, where a real popup grows to fit, up to 600px. So the screenshots draw the popup's live DOM in `popup.html` opened as a tab (same CSS and fonts) at 380 × 600, or at full length for `extension-popup-full.png`.
-- Dark mode, terms inside iframes, and a page long enough to hit the 500,000-character cap.
+- **The popup's own window size in Edge.** Headless Edge keeps the popup at the height of its first "Reading…" frame, where a real popup grows to fit, up to 600px. So the screenshots draw the popup's live DOM in `popup.html` opened as a tab (same CSS and fonts) at 380 × 600, or at full length for `extension-popup-full.png`.
+- Terms inside iframes, and a page long enough to hit the 500,000-character cap.
 
 Screenshots: `extension-popup.png` (what you see on clicking), `extension-popup-full.png` (the whole report), `extension-popup-permission.png` (before Allow), `extension-popup-selection.png`, `extension-popup-dealbreaker.png`, `extension-popup-changed.png` (after the Privacy Policy changed), `extension-show-on-page.png` (the highlighted sentence), and `extension-in-context.png` (popup over the page).
 
