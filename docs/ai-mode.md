@@ -2,6 +2,11 @@
 
 AI mode sends the clauses the rules flagged (plus clauses with broad keywords such as "data", "share", "arbitration" or "renew", up to about 8,000 characters) to a small model on your own PC. The model returns a short summary and extra points. A point is kept only if its quote really appears in the clause it names.
 
+Two things to know:
+
+- **The text goes wherever the Server URL points.** Keep it on your own PC (`127.0.0.1` or `localhost`). An address on another computer receives the clauses.
+- **The document can steer the AI.** Only the quotes are checked. The summary, and what the model says about each quote, come from a model reading the document, so a document written to mislead it (for example with instructions to the AI hidden in the text) can change them. The rule flags don't depend on the AI and stay the main result.
+
 Tested on 6 November 2026 on a Windows 11 laptop with an RTX 4060 Laptop GPU (8 GB), Ollama 0.40.14, and the models `qwen3.5:4b` and `qwen3.5:9b` (both Q4_K_M).
 
 ## 1. Ollama (the tested route)

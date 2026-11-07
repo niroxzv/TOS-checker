@@ -358,7 +358,7 @@ function showAiSummary(result: AiResult, seconds: number): void {
   aiBox.hidden = false;
   aiBox.className = "ai-box";
   const n = result.points.length;
-  let note = `${n} more AI point${n === 1 ? "" : "s"} added below, each quote checked against the text.`;
+  let note = `${n} more AI point${n === 1 ? "" : "s"} added below. Their quotes are checked against the text; this summary and what the model says about each quote aren't, and the document's own wording can steer them.`;
   if (result.dropped) note += ` ${result.dropped} dropped because their quote wasn't in the text.`;
   note += ` ${result.model ?? "Local model"}, ${seconds.toFixed(0)} s.`;
   aiBox.replaceChildren(h("h2", "", "AI summary"), h("p", "", result.summary), h("p", "muted", note));

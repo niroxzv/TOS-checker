@@ -35,7 +35,7 @@ The app does not ship a model. AI mode needs:
 - a GGUF model file.
 
 Set both paths, and the port, in the app's settings. The app then runs
-`<llama-server> -m <model.gguf> -c 8192 --host 127.0.0.1 --port <port>` with no console window, and stops it when AI mode is turned off or the app exits.
+`<llama-server> -m <model.gguf> -c 8192 --host 127.0.0.1 --port <port>` with no console window, and stops it when the app exits. Turning AI mode off leaves it running.
 
 The UI calls these through `window.__TAURI__.core.invoke`. That object only exists in the desktop app, so check for it first:
 

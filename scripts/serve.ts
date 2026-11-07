@@ -15,7 +15,14 @@ const TYPES: Record<string, string> = {
 };
 
 createServer(async (req, res) => {
-  const urlPath = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
+  let urlPath: string;
+  try {
+    urlPath = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
+  } catch {
+    // A bad escape such as "/%" would otherwise throw here and stop the server.
+    res.writeHead(400).end("Bad request");
+    return;
+  }
   const file = normalize(join(root, urlPath.endsWith("/") ? urlPath + "index.html" : urlPath));
   if (file !== root && !file.startsWith(root + sep)) {
     res.writeHead(403).end();
