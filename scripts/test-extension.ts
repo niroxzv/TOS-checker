@@ -8,13 +8,13 @@
 // 2. Starts headless Edge with a throwaway profile, speaks the DevTools protocol over --remote-debugging-pipe
 //    and loads dist/extension with Extensions.loadUnpacked.
 // 3. Clicks the toolbar button with Extensions.triggerAction (a real action click, so activeTab applies),
-//    attaches to the popup and checks the report. Then checks Not OK, selected text, and a browser page the
-//    extension can't read.
+//    attaches to the popup and checks the report, the badge and the icons. Then checks Allow, Not OK, Show on
+//    page, Open and show, selected text, a terms change, and a browser page the extension can't read.
 // 4. Saves screenshots to docs/screenshots/.
 //
-// Not covered: linked pages on another origin and the "Allow reading N more pages" permission prompt.
+// Not covered: answering the browser's own permission prompt (nothing can click it in headless Edge).
 //
-// Env: BROWSER=<msedge.exe or chrome.exe>   PROFILE_DIR=<throwaway profile, deleted afterwards>
+// Env: BROWSER=<msedge.exe or chrome.exe>   PROFILE_DIR=<profile folder to use; kept afterwards, never your real one>
 //      HEADED=1 to watch it   NO_SHOTS=1 to skip screenshots
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -47,9 +47,11 @@ function note(text: string): void {
 
 // ── The test site ───────────────────────────────────────────────────
 
-const served: { host: string; path: string; origin: string }[] = [];
+// Every request the site answered. A page load asks for text/html first; fetch() accepts anything.
+const served: { host: string; path: string; origin: string; pageLoad: boolean; cookie: string }[] = [];
 
-export function site(port: number) {
+/** Version 2 of the Privacy Policy drops one flagged sentence and adds another, for "changed since you checked". */
+export function site(port: number, privacyVersion = 1) {
   const page = (title: string, body: string, cookieUrl = `http://${LEGAL}:${port}/cookies`) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${title}</title>
 <style>
@@ -82,7 +84,7 @@ export function site(port: number) {
   <nav><a href="/features">Features</a><a href="/pricing">Pricing</a><a href="/help">Help</a></nav></header>
 ${body}
 <footer><span>© 2026 Snapnest (a fictional app for testing Tickwise)</span>
-  <a href="/privacy">Privacy Policy</a><a href="${cookieUrl}">Cookie Policy</a><a href="/help">Help centre</a></footer>
+  <a href="/privacy">Privacy Policy</a><a href="${cookieUrl}">Cookie Policy</a><a href="http://router.local:${port}/cookie-settings">Cookie settings</a><a href="/help">Help centre</a></footer>
 </body></html>`;
 
   const signupBody = `
@@ -127,7 +129,7 @@ ${body}
   <p class="updated">Last updated 1 October 2026</p>
   <p>We collect your precise location from your phone's GPS, even when the app is in the background.</p>
   <p>If you allow it, we upload your contacts and address book to help you find friends.</p>
-  <p>We may sell your personal information to data brokers.</p>
+  ${privacyVersion === 1 ? "<p>We may sell your personal information to data brokers.</p>" : "<p>We use your photos and messages to train our artificial intelligence models.</p>"}
   <p>We share usage data with our affiliates and partners for analytics.</p>
   <p>We may retain your data for up to three years after you delete your account.</p>
 </main>`);
@@ -153,20 +155,24 @@ ${body}
   } as Record<string, string>;
 }
 
-async function startSite(): Promise<{ port: number; close: () => void }> {
+async function startSite(): Promise<{ port: number; close: () => void; setPrivacy: (version: number) => void }> {
   let pages: Record<string, string> = {};
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     const host = (req.headers.host ?? "").replace(/:\d+$/, "");
     const path = new URL(req.url ?? "/", "http://x").pathname;
-    served.push({ host, path, origin: String(req.headers.origin ?? "") });
+    served.push({ host, path, origin: String(req.headers.origin ?? ""), pageLoad: String(req.headers.accept ?? "").startsWith("text/html"), cookie: String(req.headers.cookie ?? "") });
     const body = pages[`${host}${path}`];
     if (body === undefined) res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
-    else res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }).end(body);
+    else {
+      // A login cookie for the whole site, so the test can check that linked pages are fetched without it.
+      const login = path === "/signup" ? { "set-cookie": `tw_session=1; Path=/; Domain=${SITE}; SameSite=Lax` } : {};
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...login }).end(body);
+    }
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const port = (server.address() as AddressInfo).port;
   pages = site(port);
-  return { port, close: () => server.close() };
+  return { port, close: () => server.close(), setPrivacy: (version) => (pages = site(port, version)) };
 }
 
 // ── DevTools protocol over a pipe ───────────────────────────────────
@@ -353,12 +359,16 @@ function readReport(sessionId: string): Promise<any> {
       score: band ? parseInt(text(band.querySelector(".num")), 10) : NaN,
       line: text(band && band.querySelector(".line")),
       headings: all("h2").map(text),
-      docs: all(".docs li").map((li) => ({ name: text(li.querySelector("strong")), url: text(li.querySelector("small")), count: text(li.querySelector(".doc-count")) })),
+      docs: all(".docs li").map((li) => ({ name: text(li.querySelector("strong")), url: text(li.querySelector("small")), count: text(li.querySelector(".doc-count")), watch: text(li.querySelector(".watch")) })),
       cards: all(".card").map((c) => ({
         say: text(c.querySelector(".say")),
+        quote: c.querySelector(".quote").title || text(c.querySelector(".quote")),
+        severity: (c.className.match(/sev-(\\w+)/) || [])[1],
         source: text(c.querySelector(".source")),
         advice: all(".advice dt", c).map(text).join("/"),
-        buttons: all(".actions button", c).map(text).join("/"),
+        buttons: all(".actions button:not(.show)", c).map(text).join("/"),
+        show: text(c.querySelector("button.show")),
+        isNew: !!c.querySelector(".badge-new"),
         dealbreaker: c.classList.contains("is-dealbreaker"),
       })),
       allow: all("button.primary").map(text),
@@ -435,8 +445,10 @@ async function composite(pagePng: Buffer, popupPng: Buffer, file: string): Promi
 async function main(): Promise<void> {
   if (!existsSync(join(EXTENSION_DIR, "manifest.json"))) throw new Error("dist/extension is missing. Run `npm run build` first.");
   mkdirSync(SHOTS_DIR, { recursive: true });
-  const { port, close: closeSite } = await startSite();
+  const { port, close: closeSite, setPrivacy } = await startSite();
   const browserPath = findBrowser();
+  // Only a folder this script made is deleted afterwards.
+  const ownProfile = !process.env.PROFILE_DIR;
   const profile = process.env.PROFILE_DIR ?? mkdtempSync(join(tmpdir(), "bya-edge-"));
   mkdirSync(profile, { recursive: true });
   const signupUrl = `http://${SITE}:${port}/signup`;
@@ -452,7 +464,7 @@ async function main(): Promise<void> {
     "--disable-sync",
     "--window-size=1280,800",
     "--force-device-scale-factor=2",
-    `--host-resolver-rules=MAP ${SITE} 127.0.0.1, MAP ${LEGAL} 127.0.0.1, MAP ${FRESH} 127.0.0.1`,
+    `--host-resolver-rules=MAP ${SITE} 127.0.0.1, MAP ${LEGAL} 127.0.0.1, MAP ${FRESH} 127.0.0.1, MAP router.local 127.0.0.1`,
     "about:blank",
   ].filter(Boolean);
   const browser: ChildProcess = spawn(browserPath, args, { stdio: ["ignore", "ignore", "pipe", "pipe", "pipe"] });
@@ -465,7 +477,7 @@ async function main(): Promise<void> {
     console.log(`Running: ${version.product}`);
     ({ id: extensionId } = await cdp.send("Extensions.loadUnpacked", { path: EXTENSION_DIR }));
     check("extension loads unpacked", !!extensionId, extensionId);
-    await run(port, signupUrl);
+    await run(port, signupUrl, setPrivacy);
   } catch (err) {
     check("harness ran to the end", false, err instanceof Error ? err.message : String(err));
     if (stderr) console.log(`--- browser stderr (tail) ---\n${stderr}`);
@@ -473,7 +485,7 @@ async function main(): Promise<void> {
     await cdp.send("Browser.close").catch(() => browser.kill());
     await new Promise((r) => (browser.exitCode !== null ? r(null) : browser.once("exit", r)));
     closeSite();
-    if (!process.env.KEEP_PROFILE) rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
+    if (ownProfile && !process.env.KEEP_PROFILE) rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
   }
 
   const failed = results.filter((r) => !r.ok);
@@ -481,7 +493,7 @@ async function main(): Promise<void> {
   process.exitCode = failed.length ? 1 : 0;
 }
 
-async function run(port: number, signupUrl: string): Promise<void> {
+async function run(port: number, signupUrl: string, setPrivacy: (version: number) => void): Promise<void> {
   const legalOrigin = `http://${LEGAL}:${port}`;
   const tab = await openTab(signupUrl);
   await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false }, tab.sessionId);
@@ -505,8 +517,17 @@ async function run(port: number, signupUrl: string): Promise<void> {
   check("cross-origin Cookie Policy is listed as unread", r.failed.join() === "Cookie Policy", r.failed.join());
   check("'Allow reading 1 more page' button is shown", r.allow.includes("Allow reading 1 more page"), r.allow.join());
   check("non-legal links are not fetched", !served.some((s) => s.path === "/help" || s.path === "/features"));
+  check("a link to your own network (router.local) is skipped", !served.some((s) => s.host === "router.local") && !r.failed.includes("Cookie settings"), r.failed.join());
   check("popup fits its 380px width", r.width <= 380, `${r.width}px`);
   check("Tickwise fonts load from the extension (no network)", r.font);
+  check("flags from this page have Show on page", r.cards.filter((x: any) => x.source === "From: This page").every((x: any) => x.show === "Show on page"));
+  check("flags from a linked page have Open and show", r.cards.filter((x: any) => x.source === "From: Privacy Policy").every((x: any) => x.show === "Open and show"));
+  check("first check: each document says so", r.docs.every((x: any) => x.watch === "First check"), r.docs.map((x: any) => x.watch).join(" | "));
+  const high = r.cards.filter((x: any) => x.severity === "high").length;
+  const badge = await evaluate(a.sessionId, `chrome.tabs.query({ active: true, currentWindow: true }).then(([t]) => Promise.all([chrome.action.getBadgeText({ tabId: t.id }), chrome.action.getTitle({ tabId: t.id })]))`);
+  check("toolbar badge shows the high-risk count", high > 0 && badge[0] === String(high), `"${badge[0]}" for ${high} high; title "${badge[1]}"`);
+  const icons = await evaluate(a.sessionId, `Promise.all(Object.values(chrome.runtime.getManifest().icons).map((p) => fetch(chrome.runtime.getURL(p)).then((res) => res.ok && res.headers.get("content-type") === "image/png")))`);
+  check("manifest icons are real PNGs", icons.length === 4 && icons.every(Boolean), JSON.stringify(icons));
   await snapshot(a.sessionId, "extension-popup-permission.png");
 
   // 2. Allow, through the real button. A trusted CDP click is a user gesture, so chrome.permissions.request
@@ -545,10 +566,47 @@ async function run(port: number, signupUrl: string): Promise<void> {
   check("dealbreaker lowers the score", r.score < scoreBefore, `${scoreBefore} -> ${r.score}`);
   const stored = await evaluate(b.sessionId, `chrome.storage.local.get("tos-checker.prefs").then((x) => x["tos-checker.prefs"])`);
   check("choice is saved to chrome.storage.local", !!stored && Object.values(stored).includes("notok"), JSON.stringify(stored));
+  const seenKeys = await evaluate(b.sessionId, `chrome.storage.local.get("tickwise.seen").then((x) => Object.keys(x["tickwise.seen"] || {}))`);
+  check(
+    "checked pages are stored as hashes, not addresses",
+    Array.isArray(seenKeys) && seenKeys.length > 0 && seenKeys.every((k: string) => /^[0-9a-z]+$/.test(k)),
+    JSON.stringify(seenKeys),
+  );
   await snapshot(b.sessionId, "extension-popup-dealbreaker.png");
   await click(b.sessionId, ".card:first-of-type button", "Not OK");
   r = await readReport(b.sessionId);
   check("clicking Not OK again clears it", !r.cards.some((x: any) => x.dealbreaker) && r.score === scoreBefore, `${r.score}`);
+  check("reopen: each document says there's no change", r.docs.every((x: any) => x.watch === "No change since you checked today"), r.docs.map((x: any) => x.watch).join(" | "));
+
+  // Show on page: highlights the sentence in the tab and scrolls it into view, here inside the scrolling terms box.
+  const pick = r.cards.findIndex((x: any) => x.source === "From: This page" && /binding individual arbitration/.test(x.quote));
+  await evaluate(b.sessionId, `document.querySelectorAll(".card")[${pick}].querySelector("button.show").setAttribute("data-pick", "")`);
+  await click(b.sessionId, "[data-pick]");
+  const shown = await waitFor("the highlight", () =>
+    evaluate(tab.sessionId, `(() => {
+      const h = CSS.highlights && CSS.highlights.get("tickwise");
+      if (!h || h.size === 0) return null;
+      const range = [...h][0];
+      const box = range.getBoundingClientRect();
+      return { text: range.toString().replace(/\\s+/g, " ").trim(), top: box.top, bottom: box.bottom, height: innerHeight, scrolled: document.querySelector(".terms").scrollTop };
+    })()`),
+  ).catch((err) => ({ error: String(err) }) as any);
+  check("Show on page highlights the sentence", /^Any dispute arising .* class action\.$/.test(shown.text ?? ""), shown.text ?? shown.error);
+  check("Show on page scrolls it into view", shown.top >= 0 && shown.bottom <= shown.height, `top ${Math.round(shown.top)}, bottom ${Math.round(shown.bottom)}, viewport ${shown.height}, terms box scrolled ${shown.scrolled}px`);
+  if (process.env.NO_SHOTS !== "1") {
+    writeFileSync(join(SHOTS_DIR, "extension-show-on-page.png"), Buffer.from((await cdp.send("Page.captureScreenshot", { format: "png" }, tab.sessionId)).data, "base64"));
+    console.log("SHOT  docs/screenshots/extension-show-on-page.png");
+  }
+
+  // Open and show: opens a linked page at the sentence (a text fragment). The popup closes as the tab opens.
+  const before = new Set((await cdp.send("Target.getTargets")).targetInfos.map((t: any) => t.targetId));
+  await evaluate(b.sessionId, `[...document.querySelectorAll(".card")].find((c) => c.querySelector(".source").textContent === "From: Privacy Policy").querySelector("button.show").setAttribute("data-open", "")`);
+  await click(b.sessionId, "[data-open]");
+  const opened = await waitFor("the linked page to open", async () =>
+    (await cdp.send("Target.getTargets")).targetInfos.find((t: any) => t.type === "page" && !before.has(t.targetId) && t.url.includes("/privacy")),
+  ).catch(() => null);
+  check("Open and show opens the linked page at the sentence", !!opened && /\/privacy#:~:text=/.test(opened.url), opened?.url ?? "no new tab");
+  if (opened) await cdp.send("Target.closeTarget", { targetId: opened.targetId });
   await closePopup(b.targetId);
 
   // 5. Selected text over 200 characters is checked as its own document, listed first.
@@ -569,6 +627,20 @@ async function run(port: number, signupUrl: string): Promise<void> {
   await closePopup(c.targetId);
   await evaluate(tab.sessionId, `getSelection().removeAllRanges()`);
 
+  // Terms change: the Privacy Policy drops one flagged sentence (selling data) and adds one (AI training).
+  setPrivacy(2);
+  const e = await openPopup(tab.targetId);
+  r = await readReport(e.sessionId);
+  const privacy = r.docs.find((x: any) => x.name === "Privacy Policy");
+  check("changed Privacy Policy says what changed", privacy?.watch === "Changed since you checked today: 1 new flag, 1 gone", privacy?.watch);
+  check("unchanged page says no change", r.docs.find((x: any) => x.name === "This page")?.watch === "No change since you checked today");
+  const fresh = r.cards.filter((x: any) => x.isNew);
+  check("only the new flag is marked New", fresh.length === 1 && fresh[0].source === "From: Privacy Policy" && /train AI/.test(fresh[0].say), fresh.map((x: any) => `${x.say} (${x.source})`).join(" | "));
+  check("score line counts the new flag", / 1 is new since you last checked\.$/.test(r.line), r.line);
+  await snapshot(e.sessionId, "extension-popup-changed.png");
+  await closePopup(e.targetId);
+  setPrivacy(1);
+
   // 6. A browser page can't be read by any extension: the popup says so.
   const blocked = await openTab("edge://version/").catch(() => openTab("chrome://version/"));
   const d = await openPopup(blocked.targetId);
@@ -576,6 +648,12 @@ async function run(port: number, signupUrl: string): Promise<void> {
   check("browser page shows 'Can't read this page.'", r.error === "Can't read this page.", r.error);
   await closePopup(d.targetId);
   await cdp.send("Target.closeTarget", { targetId: blocked.targetId });
+
+  // The site set a login cookie on the sign-up page. Linked pages must be fetched without it, from the page
+  // (Privacy Policy, same site) and from the popup (Cookie Policy, allowed site).
+  const fetched = served.filter((s) => !s.pageLoad && (s.path === "/privacy" || s.path === "/cookies"));
+  check("linked pages are fetched without the site's cookies", fetched.length > 0 && fetched.every((s) => !s.cookie), `${fetched.length} fetches; ${fetched.filter((s) => s.cookie).map((s) => `${s.host}${s.path} "${s.cookie}"`).join(", ")}`);
+  check("control: the browser does send that cookie on page loads", served.some((s) => s.pageLoad && s.cookie.includes("tw_session")));
 
   // 7. The real prompt: a page whose Cookie Policy is on an origin never granted (Chrome remembers origins it
   //    granted once, even after permissions.remove, and then doesn't ask again). Click Allow and watch.

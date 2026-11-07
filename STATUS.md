@@ -9,7 +9,9 @@
 - [x] Add / Check / Tell next move for every rule, with Singapore-specific help: PDPA, PDPC, CASE (`src/advice.ts`).
 - [x] Boundary score out of 100, with dealbreakers costing extra (`src/score.ts`).
 - [x] Small trained model (`src/model.ts`): logistic regression over words, word pairs and which rules fired. It confirms or adds the 8 benchmark clause types, about 600 KB, and runs on the device. Retrain with `npm run train`.
-- [x] All tests pass with `npm test`.
+- [x] Disguised text doesn't hide a clause: hidden characters (soft hyphens, zero-width spaces), full-width letters and Latin words spelt with look-alike Cyrillic or Greek letters are read as plain text. Flags still quote the original.
+- [x] No slow patterns: 200 KB of hostile text (like "a.b.a.b." or thousands of blank lines) is checked in about 0.1 s. Before 7 Nov 2026 it took tens of seconds.
+- [x] All tests pass with `npm test` (197).
 
 ### Desktop / web app (`app/`)
 - [x] Paste the terms, open a file, or try a sample, then press Check (or Ctrl+Enter).
@@ -21,13 +23,20 @@
 ### Browser extension (`extension/`)
 - [x] Scans the current page, plus any text you've selected, plus the site's linked Terms, Privacy and Cookie pages, into one combined report.
 - [x] Same score, advice and dealbreakers as the app, sharing the same prefs key.
-- [x] **Tested in real Microsoft Edge 156.** `npm run test:extension` passes 34 of 34 checks. The harness loads the extension, opens the popup with a real toolbar click on a fake sign-up page, and checks four things:
+- [x] **Show on page**: scrolls the page to a flagged sentence and highlights it. Flags from a linked page get **Open and show**, which opens that page at the sentence.
+- [x] **Badge and icons**: the toolbar icon shows the number of high-risk flags for that tab. Icons are drawn by `npm run icons`.
+- [x] **Changes since your last check**: each document says "First check", "No change since you checked …" or "Changed since you checked …: N new flags, M gone", and new flags are marked New. It compares flags, not the full text, and only when you click the icon.
+- [x] **Linked pages** are fetched without cookies. Links to localhost and home-network addresses are skipped, and each document is checked up to 500,000 characters.
+- [x] **Firefox build** in `dist/firefox` (add-on ID `tickwise@niroxzv`, Firefox 140 or newer). `npm run pack:firefox` and `npm run pack:source` make the two zips addons.mozilla.org asks for.
+- [x] **Tested in real Microsoft Edge 157.** `npm run test:extension` passes 51 of 51 checks (7 Nov 2026). The harness loads the extension, opens the popup with a real toolbar click on a fake sign-up page, and checks:
   - the page, the selection and both linked pages, including one on another site after "Allow";
-  - the merged report;
-  - "From: …" on every flag;
-  - Not OK lowering the score.
+  - the merged report, "From: …" on every flag, and Not OK lowering the score;
+  - the badge, the icons, Show on page and Open and show;
+  - a Privacy Policy that changes between two checks;
+  - linked pages fetched without the site's login cookie, and a link to `router.local` skipped.
+- [x] **Tested in real Firefox 159.** `npm run test:firefox` passes 9 of 9 checks (7 Nov 2026): install, the toolbar action, the report, the badge, and Show on page.
 - [x] Popup restyled to the same Tickwise look, with the fonts bundled in the extension. Screenshots are in `docs/screenshots/`.
-- [x] `npm run pack:extension` builds `tickwise-extension.zip` to hand out.
+- [x] `npm run pack:extension` builds `tickwise-extension.zip` for Edge and Chrome.
 - Not verified: answering Edge's own permission prompt, because headless Edge can't click it. In real use, the popup closes when the prompt opens. Accept the prompt and click the icon again. That second step is verified.
 - Flaky: the last step (Allow on a never-granted site) timed out in the test harness on 2 of 4 runs (6 Nov 2026); the other checks passed every time.
 
@@ -70,12 +79,14 @@
 
 ## To do
 
-- [ ] Try the extension by hand in Chrome too. It has been tested in Edge only, because Chrome isn't installed here.
+- [ ] Try the extension by hand in Firefox (about:debugging) and Chrome. The Firefox test drives the add-on from a script, and Chrome isn't installed here.
+- [ ] Submit the Firefox build to addons.mozilla.org, so it installs and updates like any other add-on. Steps: `docs/extension.md`.
 - [ ] **Desktop build (Tauri).** This needs Rust and app icons (`npx tauri icon`). Untested.
+- [ ] **Desktop: limit what `start_ai` runs.** It starts any program path the app window sends it (`src-tauri/src/lib.rs`), which matters if the window ever loads something else, as in dev mode. Accept only a path the user picked in a file dialog. Needs Rust to build and test.
 - [ ] Raise arbitration precision (37.5% on test) and unilateral-termination recall.
 - [ ] More rules, for example children's data and in-app purchases.
 - [ ] Translate the advice into Chinese, Malay and Tamil.
-- [ ] Alert users when an app's terms change.
+- [ ] Alert users when an app's terms change without them opening the page. Today the extension notices a change only when you click its icon on that page again.
 
 ## Run it
 
@@ -85,4 +96,4 @@ npm run build
 npm run serve
 ```
 
-Then open http://127.0.0.1:5173. The extension is in `dist/extension`.
+Then open http://127.0.0.1:5173. The extension is in `dist/extension` (Edge, Chrome) and `dist/firefox` (Firefox).

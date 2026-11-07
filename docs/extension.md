@@ -1,76 +1,141 @@
-# Browser extension (Edge / Chrome)
+# Browser extension (Firefox, Edge, Chrome)
 
 The extension checks the terms of service on the page you're on, plus its linked Terms, Privacy and Cookie pages, using the same rule engine as the rest of the app (`src/engine.ts`). Not legal advice.
 
 ![The popup on a sign-up page](screenshots/extension-in-context.png)
 
-## Install it (about one minute)
+## Install it
 
-You need the `dist/extension` folder. Either build it with `npm run build`, or unzip `tickwise-extension.zip`. Then:
+Build it first with `npm run build`. That writes two folders:
+
+- `dist/firefox` for Firefox
+- `dist/extension` for Edge and Chrome
+
+### Firefox, to try it (removed when Firefox closes)
+
+1. Open **about:debugging#/runtime/this-firefox**.
+2. Click **Load Temporary Add-on…** and choose `dist/firefox/manifest.json`.
+3. Click the puzzle-piece (Extensions) button in the toolbar. Next to **Tickwise**, open the gear menu and choose **Pin to Toolbar**.
+4. Open any sign-up page, terms of service or privacy policy, and click the **Tickwise** icon.
+
+Release Firefox only keeps add-ons that Mozilla has signed. A temporary add-on goes away when Firefox restarts, so for everyday use, publish it (below).
+
+### Firefox, to keep it (like any add-on from the store)
+
+Publishing on addons.mozilla.org (AMO) is free. Mozilla signs the add-on, and Firefox then installs it with one click and updates it by itself.
+
+1. Run `npm run pack:firefox`. It writes `tickwise-firefox.zip`, with `manifest.json` at the top of the zip as AMO wants.
+2. Run `npm run pack:source` (after committing). It writes `tickwise-source.zip` from git. AMO asks for the source when the uploaded code was produced by a build step; here the build strips the TypeScript types.
+3. Sign in at https://addons.mozilla.org/developers/ with a Mozilla account (free) and choose **Submit a New Add-on**.
+4. Pick **On this site** to list it publicly, or **On your own** to get a signed `.xpi` that only you install.
+5. Upload `tickwise-firefox.zip`. AMO's validator runs on it.
+6. When asked whether the build used a generator or transpiler, say yes and upload `tickwise-source.zip`. Build notes for the reviewer: "Node 22.18 or newer, no npm install needed. Run `npm run build`; the add-on is in `dist/firefox`. `src/model-weights.ts` holds the weights of a logistic-regression model trained by `eval/train-model.py`."
+7. Fill in the listing (name, summary, category, screenshots from `docs/screenshots/`) and submit.
+
+Things to check before submitting:
+
+- **Add-on ID.** `extension/manifest.firefox.json` sets it to `tickwise@niroxzv`. It can't change after the first upload, so change it first if you want a different one.
+- **Data collection.** The same file declares `"data_collection_permissions": { "required": ["none"] }`, meaning the add-on sends nothing to its developer or anyone else. That matches the code: it has no server, and the only requests it makes are for up to 8 legal-looking pages linked from the page you're checking, sent without cookies (see "Linked pages" below). It's still your declaration to Mozilla, so read it before you submit.
+- **Version.** Each upload needs a higher `version` in `extension/manifest.json`.
+
+### Edge or Chrome (about one minute)
 
 1. Open **edge://extensions** in Edge, or **chrome://extensions** in Chrome.
 2. Turn on **Developer mode**. In Edge it's in the left sidebar; in Chrome it's at the top right.
-3. Click **Load unpacked** and choose the `dist/extension` folder (or the folder you unzipped). Pick the folder that has `manifest.json` directly inside it.
+3. Click **Load unpacked** and choose the `dist/extension` folder (the one with `manifest.json` directly inside it).
 4. Click the puzzle-piece icon in the toolbar and pin **Tickwise**.
-5. Open any sign-up page, terms of service or privacy policy, and click the **Tickwise** icon.
 
-After changing the code, run `npm run build` again and click **Reload** on the extension's card.
+An unpacked extension stays installed, but it doesn't update by itself. To publish: Edge Add-ons is free (Microsoft Partner Center), and the Chrome Web Store has a one-time US$5 developer fee. Both take the zip from `npm run pack:extension`.
 
-To hand the extension to someone else, run `npm run pack:extension`. It builds and writes `tickwise-extension.zip` in the project root. They unzip it and follow the steps above.
+After changing the code, run `npm run build` again and click **Reload** on the extension's card (Edge, Chrome), or **Reload** on about:debugging (Firefox).
 
 ## What it does
 
 - **This page**: reads the visible text of the tab when you click the icon (`activeTab` + `scripting`; no background script).
 - **Selected text**: if you selected more than 200 characters, that's checked as its own document and listed first.
-- **Linked pages**: up to 8 links that look like Terms, Privacy, Cookie or legal pages are fetched from inside the page, so pages on the same site need no extra permission.
-- **Other sites**: links on another origin can't be fetched from the page. They're listed under "Linked pages we couldn't read" with an **Allow reading N more pages** button, which asks for those origins (`optional_host_permissions`). Once you allow an origin, it's read straight away every time.
-- **One report**: the boundary score band (its colour is the verdict), "Checked N documents" with a flag count for each, then one row per flag with severity, category, the plain-English point, the quote, **From: <document>**, **Add / Check / Tell**, and **OK / Not OK**.
+- **Linked pages**: up to 8 links that look like Terms, Privacy, Cookie or legal pages are fetched from inside the page, so pages on the same site need no extra permission. They're fetched without cookies: a terms page doesn't need your login, and a link that does something when opened (say, "Accept cookies") does nothing logged out. Links to your own machine or home network (`localhost`, `192.168.x.x`, `.local` names and similar) are skipped, unless the page you're on is on one too.
+- **Other sites**: the request to a link on another origin is still sent, but the browser usually won't let the page read the answer. (It can, when that site lets any website read it with `Access-Control-Allow-Origin: *`.) Unread links are listed under "Linked pages we couldn't read" with an **Allow reading N more pages** button, which asks for those origins (`optional_host_permissions`). Once you allow an origin, it's read straight away every time, also without cookies.
+- **Very long pages**: each document is checked up to its first 500,000 characters (long terms run to about 300,000), and the list says when one was cut.
+- **One report**: the boundary score band (its colour is the verdict), "Checked N documents" with a flag count for each, then one card per flag with severity, category, the plain-English point, the quote, **From: <document>**, **Add / Check / Tell**, and **Approve / Not OK**.
+- **Show on page**: on a flag from the page you're on, scrolls the page to that sentence and highlights it in lime (the CSS Custom Highlight API; the browser selects the sentence instead if it doesn't have that API). The highlight stays until the page reloads. If the page changed since the check, the button says "Not found on page".
+- **Open and show**: on a flag from a linked page, opens that page in a new tab at the sentence, using a text fragment (`#:~:text=…`). If the browser can't find the text (some pages build their text with JavaScript), the page opens at the top.
+- **Badge**: after a check, the toolbar icon shows the number of high-risk flags in coral, for that tab only. The browser clears it when the tab goes to another page.
+- **Changes since your last check**: Tickwise remembers which flags each document had, in `chrome.storage.local` under `tickwise.seen`, for the last 300 documents. It stores a short hash of each page's address and of each flag instead of the address or the text. That keeps the addresses out of plain sight, but it isn't real protection: the hash has no secret in it, so anyone with a copy of your browser profile can hash a list of likely addresses (a million take about a second) and see which ones you checked. On the next check of the same address, each document says "First check", "No change since you checked …", or "Changed since you checked …: 2 new flags, 1 gone". New flags get a lime **New** label, and the score line counts them. It compares flags, not the full text, so edits that don't change any flag aren't reported. It only checks when you click the icon; nothing runs in the background. The selection isn't tracked.
 - **Not OK** makes a rule a dealbreaker. It moves to the top, costs extra in the score, and is saved in `chrome.storage.local` (`tos-checker.prefs`, the same shape as the desktop app). Click it again to clear it.
-- Browser pages (`edge://`, `chrome://`, the add-on stores) can't be read by any extension, so the popup says so.
+- Browser pages (`edge://`, `chrome://`, `about:`, the add-on stores) can't be read by any extension, so the popup says so.
 
-The popup loads IBM Plex from Google Fonts, as the web app does. Offline, it falls back to the system font. No page text is sent with that request.
+The fonts (Redaction and IBM Plex Mono) are bundled in `extension/fonts`, so the popup makes no font requests. The icons are drawn by `npm run icons` (`scripts/make-icons.ts`) into `extension/icons`.
 
 ## Test it in a real browser
 
 ```bash
 npm run build
-npm run test:extension      # same as: node scripts/test-extension.ts
+npm run test:extension      # Edge (or Chrome): node scripts/test-extension.ts
+npm run test:firefox        # Firefox: node scripts/test-firefox.ts
 ```
 
-`scripts/test-extension.ts` uses no dependencies. It:
+Both use no dependencies. On Windows, run them from PowerShell or cmd. Edge launched from Git Bash exited straight away in our setup.
+
+**`scripts/test-extension.ts` (Edge or Chrome)**:
 
 1. Serves a fictional sign-up page ("Snapnest") at `snapnest.test`, with its Privacy Policy on the same origin and its Cookie Policy on `legal.snapnest.test`. Both names point at 127.0.0.1 through `--host-resolver-rules`.
 2. Starts headless Edge with a throwaway profile (deleted afterwards), and talks to it over `--remote-debugging-pipe` with `--enable-unsafe-extension-debugging`. It loads `dist/extension` with `Extensions.loadUnpacked`.
-3. Clicks the toolbar button with `Extensions.triggerAction` (a real action click, so `activeTab` applies), attaches to the popup and checks the report. Then it clicks **Allow**, **Not OK**, selects text, and opens a browser page.
+3. Clicks the toolbar button with `Extensions.triggerAction` (a real action click, so `activeTab` applies), attaches to the popup and checks the report. Then it clicks **Allow**, **Not OK**, **Show on page** and **Open and show**, selects text, changes the Privacy Policy between visits, and opens a browser page. The site sets a login cookie, so the test can check that linked pages are fetched without it, and the footer links to `router.local`, which must be skipped.
 4. Saves the screenshots in `docs/screenshots/`.
 
-Options: `BROWSER=<path to msedge.exe or chrome.exe>`, `PROFILE_DIR=<folder>`, `HEADED=1` to watch, `NO_SHOTS=1` to skip screenshots. It exits with code 1 if any check fails.
+Options: `BROWSER=<path to msedge.exe or chrome.exe>`, `PROFILE_DIR=<folder>` to use a profile folder of your own (kept afterwards; never point it at your real browser profile), `HEADED=1` to watch, `NO_SHOTS=1` to skip screenshots. It exits with code 1 if any check fails.
 
-On Windows, run it from PowerShell or cmd. Edge launched from Git Bash exited straight away in our setup.
+**`scripts/test-firefox.ts` (Firefox)**:
+
+1. Serves the same Snapnest pages. `network.dns.localDomains` points the names at this machine.
+2. Starts headless Firefox with a throwaway profile, and installs `dist/firefox` as a temporary add-on over WebDriver BiDi (`webExtension.install`).
+3. Clicks Tickwise's toolbar action from the browser window (`triggerAction`, which is what a toolbar click runs, so `activeTab` applies). This needs `--remote-allow-system-access` and `MOZ_REMOTE_ALLOW_SYSTEM_ACCESS=1`, which the script sets.
+4. Reads the popup through a frame script, presses **Show on page**, and checks the highlight in the tab.
+
+It's shorter than the Edge test, because Allow, Not OK, selected text and terms changes run the same code. Options: `FIREFOX=<path to firefox.exe>`, `HEADED=1`.
 
 ## Tested on
 
-**Microsoft Edge 156.0.4314.58, Windows 11, headless, 6 November 2026: 33 of 33 checks pass.**
+**Microsoft Edge 157.0.4341.42, Windows 11, headless, 7 November 2026: 51 of 51 checks pass.**
 
 Verified in the real browser:
-- The extension loads unpacked, and the toolbar click opens the popup with no console errors.
-- It reads the current page and the same-origin Privacy Policy and Cookie Policy. It skips links that aren't legal pages (Help, Features).
-- One merged report: the score band, "Checked N documents", and flags from every document, each with "From: <document>", Add / Check / Tell, and OK / Not OK.
+- The extension loads unpacked with its icons, and the toolbar click opens the popup with no console errors.
+- It reads the current page and the same-origin Privacy Policy. It skips links that aren't legal pages (Help, Features).
+- One merged report: the score band, "Checked N documents", and flags from every document, each with "From: <document>", Add / Check / Tell, Approve / Not OK, and Show on page (this page) or Open and show (linked pages).
+- The toolbar badge shows the high-risk count (4), with a tooltip that says so.
 - Cross-origin: the Cookie Policy on another origin is listed as unread with **Allow reading 1 more page**. Once the origin is granted, a real (trusted) click on Allow reads it, and the report goes to 3 documents. The next click on the icon reads it without asking.
-- Selected text (410 characters) becomes the first document, and its flags say "From: Selected text".
 - Not OK makes a dealbreaker, lowers the score (22 to 17), is saved to `chrome.storage.local`, and survives reopening. Clicking it again clears it.
+- Show on page highlights the arbitration sentence and scrolls it into view, including inside the page's own scrolling terms box.
+- Open and show opens the Privacy Policy in a new tab with a `#:~:text=` fragment for the sentence.
+- Selected text (410 characters) becomes the first document, and its flags say "From: Selected text".
+- Changes: the first check says "First check" for each document, the next says "No change since you checked today". After the Privacy Policy drops one flagged sentence and adds one, it says "Changed since you checked today: 1 new flag, 1 gone", the new flag (AI training) is the only one marked New, and the score line says "1 is new since you last checked." Storage holds hashes, not the page addresses.
 - On `edge://version` the popup shows "Can't read this page."
+- Cookies: the site sets a login cookie, and all 12 fetches of linked pages (from the page and from the popup) go out without it, while opening a page in a tab still sends it. With `credentials: "omit"` taken out of the built popup, Edge sent the cookie on every one of those fetches, including to the allowed site, so the check does catch it.
+- A footer link to `router.local` (your own network) is skipped: never requested, never listed.
+
+**Firefox 159.0.1 (Microsoft Store build), Windows 11, headless, 7 November 2026: 9 of 9 checks pass.**
+
+- Firefox installs `dist/firefox` (manifest, add-on ID and data declaration accepted).
+- The toolbar action opens the popup with the same report as in Edge (score 26, 19 flags on the first check), reads this page and the Privacy Policy, and lists the Cookie Policy for Allow.
+- The badge shows 4, with its tooltip.
+- Show on page highlights the arbitration sentence with Firefox's CSS Custom Highlight API and scrolls it into view.
+- No errors from the add-on. Firefox logs the blocked cross-origin read of the Cookie Policy, which is expected, since that page waits for Allow.
 
 Not verified, and why:
-- **Answering the permission prompt.** Headless Edge can't show or click the browser's own prompt. The harness grants the origin the way Site access on edge://extensions does (`chrome.developerPrivate.addHostPermission`), then clicks Allow. On an origin that was never granted, the Allow click does open the prompt: Edge closes the popup as the prompt takes focus. So for a real user: click **Allow**, accept the prompt, then click the icon again, and the page is read straight away. That last step is verified.
+- **Answering the permission prompt.** Headless Edge can't show or click the browser's own prompt. The Edge test grants the origin the way Site access on edge://extensions does (`chrome.developerPrivate.addHostPermission`), then clicks Allow. On an origin that was never granted, the Allow click does open the prompt: Edge closes the popup as the prompt takes focus. So for a real user: click **Allow**, accept the prompt, then click the icon again, and the page is read straight away. That last step is verified. In Firefox, Allow isn't tested.
+- **Whether the browser highlights an Open and show sentence.** The test checks the new tab's address, not what the browser draws.
+- **Cookies and the local-network skip in Firefox.** Only the Edge test checks them; the code is the same.
+- **Firefox through a real mouse click.** The Firefox test calls what the click runs, not the click itself, and reads the popup through a frame script. Loading it by hand from about:debugging is the last check.
+- **Publishing.** AMO's own validator hasn't seen the zip. It runs when you upload.
 - **The popup's own window size.** Headless Edge keeps the popup at the height of its first "Reading…" frame, where a real popup grows to fit, up to 600px. So the screenshots draw the popup's live DOM in `popup.html` opened as a tab (same CSS and fonts) at 380 × 600, or at full length for `extension-popup-full.png`.
-- Chrome (none on the test PC), dark mode, very large pages, and terms inside iframes.
+- Chrome (none on the test PC), dark mode, terms inside iframes, and a page long enough to hit the 500,000-character cap.
 
-Screenshots: `extension-popup.png` (what you see on clicking), `extension-popup-full.png` (the whole report), `extension-popup-permission.png` (before Allow), `extension-popup-selection.png`, `extension-popup-dealbreaker.png`, and `extension-in-context.png` (popup over the page).
+Screenshots: `extension-popup.png` (what you see on clicking), `extension-popup-full.png` (the whole report), `extension-popup-permission.png` (before Allow), `extension-popup-selection.png`, `extension-popup-dealbreaker.png`, `extension-popup-changed.png` (after the Privacy Policy changed), `extension-show-on-page.png` (the highlighted sentence), and `extension-in-context.png` (popup over the page).
 
 ## Known gaps
 
-- No icons yet, so the browser shows a default letter icon.
 - It only reads the top frame, so terms inside an iframe are missed.
-- One row per flag, so a rule that matches many sentences shows many rows.
-- Linked pages that build their text with JavaScript come back mostly empty, because fetched HTML isn't run.
+- One card per flag, so a rule that matches many sentences shows many cards.
+- Linked pages that build their text with JavaScript come back mostly empty, because fetched HTML isn't run. Text a linked page hides with CSS is read like the rest.
+- Hidden characters (soft hyphens, zero-width spaces), full-width letters and Latin words spelt with look-alike Cyrillic or Greek letters are read through. Other disguises, such as words broken up with spaces or text in images, aren't.
+- Changes are only noticed when you click the icon on that page again.

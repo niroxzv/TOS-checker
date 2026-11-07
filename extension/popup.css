@@ -60,6 +60,10 @@ h2 { font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1
 .link-text strong { font-weight: 700; }
 .link-text small { color: var(--muted); font: 500 10px/1.5 var(--mono); }
 .doc-count { font: 500 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; color: var(--muted); }
+/* What changed since the last check. A change is in ink with a coral dot; coral text would be too faint at 10px. */
+.link-text small.watch { white-space: normal; }
+.link-text small.watch.changed { color: var(--fg); font-weight: 600; }
+.watch.changed::before { content: "\25CF\00A0"; color: var(--coral); }
 .more p { font-size: 13px; }
 
 /* Each flag is an oat card. Severity is a pill: high = coral fill, medium = coral outline, low/info = grey outline. */
@@ -73,6 +77,7 @@ h2 { font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1
 .sev-high .pill-sev { background: var(--coral); color: #141413; box-shadow: none; }
 .sev-medium .pill-sev { color: var(--coral); box-shadow: inset 0 0 0 1px var(--coral); }
 .badge { background: var(--fg); color: var(--bg); }
+.badge-new { background: var(--lime); color: #141413; }
 .say { font: 700 16px/1.3 var(--serif); margin-bottom: 8px; }
 .quote { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--paper); color: var(--muted); font-style: italic; font-size: 13px; overflow-wrap: anywhere; }
 .quote::before { content: "\201C"; }
@@ -91,6 +96,9 @@ button:disabled { opacity: .5; cursor: default; }
 button.primary { margin: 8px 0; background: var(--fg); color: var(--bg); }
 button.primary:hover { opacity: .88; }
 .choice-ok[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+/* Goes to the sentence: set apart from the two choices, and quieter. */
+button.show { margin-left: auto; border-color: var(--rule); }
+button.show:hover { border-color: var(--fg); }
 .choice-notok[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #141413; }
 
 .error { color: var(--coral); font-weight: 700; }

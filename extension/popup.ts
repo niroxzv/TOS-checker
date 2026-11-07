@@ -2,8 +2,10 @@ import { analyze } from "../src/engine.ts";
 import { boundaryScore } from "../src/score.ts";
 import { adviceFor } from "../src/advice.ts";
 import type { Category, Flag, Severity } from "../src/types.ts";
+import { badgeFor, compareSeen, flagKey, normalize, plural, pruneSeen, seenKey, textFragmentUrl, watchLine, type Seen } from "./lib.ts";
 
-declare const chrome: any;
+/** Firefox has `browser` (promises everywhere); Chrome and Edge have `chrome`. */
+const ext: any = (globalThis as any).browser ?? (globalThis as any).chrome;
 
 type Pref = "ok" | "notok";
 type Prefs = Record<string, Pref>;
@@ -26,6 +28,12 @@ interface Doc {
   name: string;
   url: string;
   flags: Flag[];
+  /** The page or the selection, so its sentences can be shown in the open tab. */
+  onPage: boolean;
+  /** The last check of the same document, and this one. The selection isn't watched. */
+  watch?: { prev?: Seen; now: Seen };
+  /** Longer than MAX_TEXT, so only the start was checked. */
+  cut?: boolean;
 }
 
 /** A flag plus the document its quote came from. */
@@ -36,6 +44,9 @@ interface Hit {
 
 /** Shared with the desktop app. */
 const PREFS_KEY = "tos-checker.prefs";
+/** Flags of each document at its last check, for "changed since you checked". */
+const SEEN_KEY = "tickwise.seen";
+const SEEN_MAX = 300;
 const SEVERITIES: Severity[] = ["high", "medium", "low", "info"];
 const SEVERITY_RANK: Record<Severity, number> = { high: 0, medium: 1, low: 2, info: 3 };
 const SEVERITY_LABEL: Record<Severity, string> = { high: "High", medium: "Medium", low: "Low", info: "Info" };
@@ -49,17 +60,25 @@ const CATEGORY_LABEL: Record<Category, string> = {
 };
 const QUOTE_MAX = 200;
 const SELECTION_MIN = 200;
+/** Characters checked per document. Long terms run to about 300,000; this keeps a huge page from stalling the popup. */
+const MAX_TEXT = 500_000;
+/** Bytes of a linked page read before converting it to text. */
+const MAX_HTML = 3_000_000;
 const DROP = "script, style, noscript, nav, header, footer, template, svg, iframe";
 const BLOCKS = "p, div, li, br, h1, h2, h3, h4, h5, h6, section, article, main, aside, ul, ol, dl, dt, dd, table, tr, blockquote, pre, hr";
+const HIGHLIGHT_CSS = "::highlight(tickwise) { background-color: #E1EAA4; color: #141413; }";
 
 const main = document.getElementById("main") as HTMLElement;
 const pageLine = document.getElementById("page") as HTMLElement;
 
+let tabId: number | null = null;
 let prefs: Prefs = {};
+let seen: Record<string, Seen> = {};
 let page: PageData | null = null;
 let docs: Doc[] = [];
 /** Legal links we couldn't read (usually cross-origin). */
 let failed: PageLink[] = [];
+let highlightCss = false;
 
 /**
  * Runs inside the page (chrome.scripting serializes it), so it must not use anything from outside its own body.
@@ -67,11 +86,15 @@ let failed: PageLink[] = [];
  */
 function grabPage(): PageData {
   const LOOKS_LEGAL = /terms|conditions|privacy|cookie|eula|legal|\btos\b/i;
+  // Your own machine and home network: a website shouldn't get Tickwise to open your router's pages.
+  const LOCAL = /^(?:localhost|.+\.localhost|.+\.local|.+\.internal|.+\.home\.arpa|0\.0\.0\.0|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|169\.254\.\d+\.\d+|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+|\[.*\])$/i;
+  const pageIsLocal = LOCAL.test(location.hostname);
   const here = location.href.split("#")[0];
   const seen = new Set<string>();
   const links: PageLink[] = [];
   for (const a of Array.from(document.querySelectorAll("a[href]"))) {
     if (!(a instanceof HTMLAnchorElement) || !/^https?:$/.test(a.protocol)) continue;
+    if (!pageIsLocal && LOCAL.test(a.hostname)) continue;
     const href = a.href.split("#")[0];
     if (href === here || seen.has(href)) continue;
     const text = (a.textContent || "").replace(/\s+/g, " ").trim();
@@ -99,10 +122,11 @@ async function fetchInPage(urls: string[]): Promise<(string | null)[]> {
   return Promise.all(
     urls.map(async (url) => {
       try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        // No cookies, as in readFromPopup.
+        const res = await fetch(url, { credentials: "omit", signal: AbortSignal.timeout(10000) });
         const type = res.headers.get("content-type") || "";
         if (!res.ok || !type.startsWith("text/")) return null;
-        return (await res.text()).slice(0, 3000000);
+        return (await res.text()).slice(0, 3000000); // MAX_HTML: this function can't see constants outside it
       } catch {
         return null;
       }
@@ -110,13 +134,73 @@ async function fetchInPage(urls: string[]): Promise<(string | null)[]> {
   );
 }
 
-async function start(): Promise<void> {
-  let tabId: number;
+/**
+ * Also runs inside the page, so it must be self-contained. Finds the quote in the page, highlights it and
+ * scrolls it into view. Returns false if it isn't on the page.
+ */
+function findAndShow(quote: string): boolean {
+  // innerText (where the quote came from) and the page's text nodes differ in spacing and capitals,
+  // so both sides are compared with whitespace removed and in lower case.
+  const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "TEXTAREA"]);
+  const chars: string[] = [];
+  const at: { node: Text; offset: number }[] = [];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const node = n as Text;
+    if (node.parentElement && SKIP.has(node.parentElement.tagName)) continue;
+    const s = node.data;
+    for (let i = 0; i < s.length; i++) {
+      if (/\s/.test(s[i])) continue;
+      const lower = s[i].toLowerCase();
+      for (let k = 0; k < lower.length; k++) {
+        chars.push(lower[k]);
+        at.push({ node, offset: i });
+      }
+    }
+  }
+  const hay = chars.join("");
+  let needle = "";
+  for (let i = 0; i < quote.length; i++) if (!/\s/.test(quote[i])) needle += quote[i].toLowerCase();
+  if (!needle) return false;
+
+  // The first visible match; hidden copies (menus, templates) have no boxes.
+  let found: Range | null = null;
+  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + 1)) {
+    const start = at[i];
+    const end = at[i + needle.length - 1];
+    const range = document.createRange();
+    range.setStart(start.node, start.offset);
+    range.setEnd(end.node, end.offset + 1);
+    found = found || range;
+    if (range.getClientRects().length > 0) {
+      found = range;
+      break;
+    }
+  }
+  if (!found) return false;
+
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const w = window as any;
+    w.CSS.highlights.set("tickwise", new w.Highlight(found));
+  } catch {
+    // No CSS Custom Highlight API: select the sentence instead.
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(found);
+  }
+  // The element first, so scrolling boxes inside the page move too; then centre the sentence itself.
+  found.startContainer.parentElement?.scrollIntoView({ block: "center" });
+  const box = found.getBoundingClientRect();
+  if (box.top < 0 || box.bottom > window.innerHeight) window.scrollBy(0, box.top - window.innerHeight / 3);
+  return true;
+}
+
+async function start(): Promise<void> {
+  try {
+    const [tab] = await ext.tabs.query({ active: true, currentWindow: true });
     if (!tab || tab.id === undefined) throw new Error("No active tab.");
-    tabId = tab.id;
-    const results = await chrome.scripting.executeScript({ target: { tabId }, func: grabPage });
+    tabId = tab.id as number;
+    const results = await ext.scripting.executeScript({ target: { tabId }, func: grabPage });
     const result = results && results[0] && results[0].result;
     if (!result) throw new Error("The page returned nothing.");
     page = result as PageData;
@@ -125,36 +209,49 @@ async function start(): Promise<void> {
     return;
   }
 
-  prefs = await loadPrefs();
+  [prefs, seen] = await Promise.all([loadObject<Prefs>(PREFS_KEY), loadObject<Record<string, Seen>>(SEEN_KEY)]);
+  // Test builds of 0.4.0 stored the full address as the key. Drop those; a hash never contains ":".
+  for (const key of Object.keys(seen)) if (key.includes(":")) delete seen[key];
   pageLine.textContent = describePage(page);
 
   // Selection first, so a clause the user picked out is credited to "Selected text" after dedupe.
   const selection = page.selection.trim();
-  if (selection.length > SELECTION_MIN) addDoc("Selected text", page.url, selection);
-  addDoc("This page", page.url, page.text);
+  if (selection.length > SELECTION_MIN) addDoc("Selected text", page.url, selection, true, false);
+  addDoc("This page", page.url, page.text, true, true);
 
   if (page.links.length > 0) {
     status(`Reading ${plural(page.links.length, "linked page")}…`);
     let bodies: (string | null)[] = [];
     try {
-      const results = await chrome.scripting.executeScript({ target: { tabId }, func: fetchInPage, args: [page.links.map((l) => l.href)] });
+      const results = await ext.scripting.executeScript({ target: { tabId }, func: fetchInPage, args: [page.links.map((l) => l.href)] });
       bodies = (results && results[0] && results[0].result) || [];
     } catch {
       // Treat every link as failed; the permission button can still fetch them.
     }
     page.links.forEach((link, i) => {
       const html = bodies[i];
-      if (typeof html === "string") addDoc(link.text, link.href, htmlToText(html));
+      if (typeof html === "string") addDoc(link.text, link.href, htmlToText(html), false, true);
       else failed.push(link);
     });
     // Origins the user allowed on an earlier visit can be fetched straight away.
     await readFromPopup(await alreadyAllowed(failed));
   }
   render();
+  await saveSeen();
 }
 
-function addDoc(name: string, url: string, text: string): void {
-  if (text.trim()) docs.push({ name, url, flags: analyze(text) });
+function addDoc(name: string, url: string, text: string, onPage: boolean, watched: boolean): void {
+  if (!text.trim()) return;
+  const cut = text.length > MAX_TEXT;
+  const doc: Doc = { name, url, flags: analyze(cut ? text.slice(0, MAX_TEXT) : text), onPage, cut };
+  if (watched) {
+    const key = seenKey(url);
+    const prev = seen[key];
+    const now = compareSeen(prev, doc.flags.map((f) => flagKey(f.ruleId, f.quote)), Date.now());
+    seen[key] = now;
+    doc.watch = { prev, now };
+  }
+  docs.push(doc);
 }
 
 /** Fetch from the popup itself. This only works cross-origin once the user has granted the host. */
@@ -162,10 +259,11 @@ async function readFromPopup(links: PageLink[]): Promise<void> {
   await Promise.all(
     links.map(async (link) => {
       try {
-        const res = await fetch(link.href, { signal: AbortSignal.timeout(10000) });
+        // No cookies: a terms page doesn't need your login, and a link that does something when visited does nothing logged out.
+        const res = await fetch(link.href, { credentials: "omit", signal: AbortSignal.timeout(10000) });
         const type = res.headers.get("content-type") || "";
         if (!res.ok || !type.startsWith("text/")) return;
-        addDoc(link.text, link.href, htmlToText(await res.text()));
+        addDoc(link.text, link.href, htmlToText((await res.text()).slice(0, MAX_HTML)), false, true);
         failed = failed.filter((l) => l !== link);
       } catch {
         // Still failed; it stays in the list.
@@ -178,7 +276,7 @@ async function alreadyAllowed(links: PageLink[]): Promise<PageLink[]> {
   const allowed: PageLink[] = [];
   for (const link of links) {
     try {
-      if (await chrome.permissions.contains({ origins: [originPattern(link.href)] })) allowed.push(link);
+      if (await ext.permissions.contains({ origins: [originPattern(link.href)] })) allowed.push(link);
     } catch {
       // Ignore; the link stays failed.
     }
@@ -196,19 +294,31 @@ function htmlToText(html: string): string {
     node.nodeValue = (node.nodeValue || "").replace(/\s+/g, " ");
   }
   for (const node of Array.from(doc.body.querySelectorAll(BLOCKS))) node.after("\n");
+  // Trim line by line: a regex like / *\n */ is slow on a long run of spaces.
   return (doc.body.textContent || "")
-    .replace(/ *\n */g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
-async function loadPrefs(): Promise<Prefs> {
+async function loadObject<T extends object>(key: string): Promise<T> {
   try {
-    const got = await chrome.storage.local.get(PREFS_KEY);
-    const value = got && got[PREFS_KEY];
-    return value && typeof value === "object" ? (value as Prefs) : {};
+    const got = await ext.storage.local.get(key);
+    const value = got && got[key];
+    return value && typeof value === "object" ? (value as T) : ({} as T);
   } catch {
-    return {};
+    return {} as T;
+  }
+}
+
+async function saveSeen(): Promise<void> {
+  try {
+    seen = pruneSeen(seen, SEEN_MAX);
+    await ext.storage.local.set({ [SEEN_KEY]: seen });
+  } catch (err) {
+    console.warn("Tickwise: could not save what was checked", err);
   }
 }
 
@@ -218,7 +328,7 @@ async function setPref(ruleId: string, value: Pref): Promise<void> {
   else prefs[ruleId] = value;
   render();
   try {
-    await chrome.storage.local.set({ [PREFS_KEY]: prefs });
+    await ext.storage.local.set({ [PREFS_KEY]: prefs });
   } catch (err) {
     console.warn("Tickwise: could not save prefs", err);
   }
@@ -226,19 +336,25 @@ async function setPref(ruleId: string, value: Pref): Promise<void> {
 
 /** Every flag from every document, deduped by rule + quote. The first document wins. */
 function mergedHits(): Hit[] {
-  const seen = new Set<string>();
+  const seenKeys = new Set<string>();
   const hits: Hit[] = [];
   for (const doc of docs) {
     for (const flag of doc.flags) {
       const key = `${flag.ruleId}|${normalize(flag.quote)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
       hits.push({ flag, doc });
     }
   }
   // Dealbreakers first, then most severe, then document order (sort is stable).
   const isDeal = (h: Hit) => (prefs[h.flag.ruleId] === "notok" ? 0 : 1);
   return hits.sort((a, b) => isDeal(a) - isDeal(b) || SEVERITY_RANK[a.flag.severity] - SEVERITY_RANK[b.flag.severity]);
+}
+
+/** New since the document was last checked. */
+function isNew({ flag, doc }: Hit): boolean {
+  const change = doc.watch?.now.change;
+  return !!change && change.added.includes(flagKey(flag.ruleId, flag.quote));
 }
 
 function render(): void {
@@ -248,10 +364,12 @@ function render(): void {
   if (docs.length === 0) {
     main.append(el("p", { className: "muted", text: "No readable text on this page." }));
     if (failed.length > 0) main.append(failedBlock());
+    setBadge(0);
     return;
   }
 
   const hits = mergedHits();
+  setBadge(hits.filter((h) => h.flag.severity === "high").length);
   main.append(scoreBlock(hits), docList());
   // Straight under the document list, not after every card, so the button is seen without scrolling.
   if (failed.length > 0) main.append(failedBlock());
@@ -259,6 +377,21 @@ function render(): void {
   if (hits.length === 0) flags.append(el("p", { className: "muted", text: "Nothing flagged. That doesn't mean it's harmless, so skim it anyway." }));
   for (const hit of hits) flags.append(card(hit));
   main.append(flags);
+}
+
+/** The toolbar badge for this tab. The browser clears it when the tab goes to another page. */
+function setBadge(high: number): void {
+  if (tabId === null) return;
+  const { text, title } = badgeFor(high);
+  const calls = [
+    ext.action.setBadgeText({ tabId, text }),
+    ext.action.setBadgeBackgroundColor({ tabId, color: "#FF5A36" }),
+    ext.action.setTitle({ tabId, title }),
+  ];
+  if (ext.action.setBadgeTextColor) calls.push(ext.action.setBadgeTextColor({ tabId, color: "#141413" }));
+  Promise.all(calls).catch(() => {
+    // The tab may be gone; the badge doesn't matter then.
+  });
 }
 
 /** The score band: its colour is the verdict, and its line says what's behind it. */
@@ -276,6 +409,8 @@ function scoreBlock(hits: Hit[]): HTMLElement {
   const line = el("p", { className: "line", text: hits.length === 0 ? "Nothing flagged." : `${plural(hits.length, "thing")} to know before you tick: ${counts}.` });
   const deals = new Set(hits.filter((h) => prefs[h.flag.ruleId] === "notok").map((h) => h.flag.ruleId)).size;
   if (deals > 0) line.append(` ${deals} of your dealbreaker${deals === 1 ? " is" : "s are"} in here.`);
+  const fresh = hits.filter(isNew).length;
+  if (fresh > 0) line.append(` ${fresh} ${fresh === 1 ? "is" : "are"} new since you last checked.`);
 
   const k = el("p", { className: "k", text: "Boundary score" }, el("span", { className: "verdict", text: label }));
   const tallyRow = el("p", { className: "tally" });
@@ -296,19 +431,19 @@ function scoreBlock(hits: Hit[]): HTMLElement {
 function docList(): HTMLElement {
   const list = el("ul", { className: "docs" });
   for (const doc of docs) {
-    list.append(
-      el(
-        "li",
-        {},
-        el("span", { className: "link-text" }, el("strong", { text: doc.name }), el("small", { text: shortUrl(doc.url) })),
-        el("span", { className: "doc-count", text: plural(doc.flags.length, "flag") }),
-      ),
-    );
+    const text = el("span", { className: "link-text" }, el("strong", { text: doc.name }), el("small", { text: shortUrl(doc.url) }));
+    if (doc.watch) {
+      const { text: line, changed } = watchLine(doc.watch.prev, doc.watch.now, Date.now());
+      text.append(el("small", { className: changed ? "watch changed" : "watch", text: line }));
+    }
+    if (doc.cut) text.append(el("small", { className: "watch", text: `Very long: only the first ${MAX_TEXT.toLocaleString("en")} characters were checked` }));
+    list.append(el("li", {}, text, el("span", { className: "doc-count", text: plural(doc.flags.length, "flag") })));
   }
   return el("section", {}, el("h2", { text: `Checked ${plural(docs.length, "document")}` }), list);
 }
 
-function card({ flag, doc }: Hit): HTMLElement {
+function card(hit: Hit): HTMLElement {
+  const { flag, doc } = hit;
   const pref = prefs[flag.ruleId];
   let className = `card sev-${flag.severity}`;
   if (pref === "notok") className += " is-dealbreaker";
@@ -320,6 +455,7 @@ function card({ flag, doc }: Hit): HTMLElement {
     el("span", { className: "pill-sev", text: SEVERITY_LABEL[flag.severity] }),
     el("span", { className: "cat", text: CATEGORY_LABEL[flag.category] ?? flag.category }),
   );
+  if (isNew(hit)) meta.prepend(el("span", { className: "badge badge-new", text: "New" }));
   if (pref === "notok") meta.prepend(el("span", { className: "badge", text: "Dealbreaker" }));
 
   const quoteText = normalize(flag.quote);
@@ -338,6 +474,8 @@ function card({ flag, doc }: Hit): HTMLElement {
     toggle("Approve", "choice-ok", pref === "ok", () => setPref(flag.ruleId, "ok")),
     toggle("Not OK", "choice-notok", pref === "notok", () => setPref(flag.ruleId, "notok")),
   );
+  const show = showButton(flag, doc);
+  if (show) actions.append(show);
 
   return el(
     "article",
@@ -351,6 +489,36 @@ function card({ flag, doc }: Hit): HTMLElement {
   );
 }
 
+/** "Show on page" for the open tab; "Open and show" for a linked page, which opens it at the sentence. */
+function showButton(flag: Flag, doc: Doc): HTMLButtonElement | null {
+  if (doc.onPage) {
+    const b = plainButton("Show on page", async () => {
+      if (tabId === null) return;
+      let found = false;
+      try {
+        if (!highlightCss) {
+          await ext.scripting.insertCSS({ target: { tabId }, css: HIGHLIGHT_CSS });
+          highlightCss = true;
+        }
+        const results = await ext.scripting.executeScript({ target: { tabId }, func: findAndShow, args: [flag.quote] });
+        found = !!(results && results[0] && results[0].result);
+      } catch {
+        found = false;
+      }
+      if (!found) {
+        b.textContent = "Not found on page";
+        b.disabled = true;
+      }
+    });
+    b.className = "show";
+    return b;
+  }
+  if (!/^https?:\/\//i.test(doc.url)) return null;
+  const b = plainButton("Open and show", () => ext.tabs.create({ url: textFragmentUrl(doc.url, flag.quote) }));
+  b.className = "show";
+  return b;
+}
+
 function failedBlock(): HTMLElement {
   const list = el("ul", { className: "links" });
   for (const link of failed) {
@@ -360,7 +528,7 @@ function failedBlock(): HTMLElement {
         {},
         el("span", { className: "link-text" }, el("strong", { text: link.text }), el("small", { text: shortUrl(link.href) })),
         plainButton("Open", () => {
-          if (/^https?:\/\//i.test(link.href)) chrome.tabs.create({ url: link.href });
+          if (/^https?:\/\//i.test(link.href)) ext.tabs.create({ url: link.href });
         }),
       ),
     );
@@ -370,7 +538,7 @@ function failedBlock(): HTMLElement {
     let granted = false;
     try {
       // Must be called straight from the click, before any other await.
-      granted = await chrome.permissions.request({ origins });
+      granted = await ext.permissions.request({ origins });
     } catch {
       granted = false;
     }
@@ -379,6 +547,7 @@ function failedBlock(): HTMLElement {
     allow.textContent = "Reading…";
     await readFromPopup([...failed]);
     render();
+    await saveSeen();
   });
   allow.className = "primary";
   return el(
@@ -399,9 +568,9 @@ function showBlocked(err: unknown): void {
   main.replaceChildren(
     el("p", { className: "error", text: "Can't read this page." }),
     el("p", {
-      text: "Browsers don't let extensions read their own pages (chrome://, edge://, the Chrome Web Store, Edge Add-ons) or some PDF viewers. Open the site's terms page and click Tickwise again.",
+      text: "Browsers don't let extensions read their own pages (chrome://, edge://, about:, the add-on stores) or some PDF viewers. Open the site's terms page and click Tickwise again.",
     }),
-    el("p", { className: "muted", text: "For a local file, turn on \"Allow access to file URLs\" for Tickwise on the extensions page." }),
+    el("p", { className: "muted", text: "For a local file in Chrome or Edge, turn on \"Allow access to file URLs\" for Tickwise on the extensions page." }),
     el("p", { className: "muted detail", text: err instanceof Error ? err.message : String(err) }),
   );
 }
@@ -419,21 +588,15 @@ function originPattern(href: string): string {
   return `${new URL(href).origin}/*`;
 }
 
+/** Host and path, shortened. A long host loses its start, not its end: the end names the real site. */
 function shortUrl(href: string): string {
   try {
     const u = new URL(href);
-    return clip(u.hostname + u.pathname, 60);
+    const host = u.hostname.length > 40 ? `…${u.hostname.slice(-39)}` : u.hostname;
+    return host + clip(u.pathname, 60 - host.length);
   } catch {
     return clip(href, 60);
   }
-}
-
-function normalize(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
-
-function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
 function clip(text: string, max: number): string {

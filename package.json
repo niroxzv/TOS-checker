@@ -22,6 +22,10 @@
     "eval:rules": "node eval/eval-unfair-tos.ts test --rules-only",
     "train": "node eval/dump-rule-hits.ts && python eval/train-model.py",
     "test:extension": "node scripts/test-extension.ts",
-    "pack:extension": "npm run build && tar.exe -a -c -f tickwise-extension.zip -C dist/extension ."
+    "test:firefox": "node scripts/test-firefox.ts",
+    "icons": "node scripts/make-icons.ts",
+    "pack:extension": "npm run build && tar.exe -a -c -f tickwise-extension.zip -C dist/extension manifest.json popup.html popup.css popup.js lib.js icons fonts src",
+    "pack:firefox": "npm run build && tar.exe -a -c -f tickwise-firefox.zip -C dist/firefox manifest.json popup.html popup.css popup.js lib.js icons fonts src",
+    "pack:source": "git archive --format=zip -o tickwise-source.zip HEAD"
   }
 }

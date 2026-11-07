@@ -2,7 +2,7 @@
 
 Know what you're agreeing to before you tick. Tickwise reads a terms of service and flags what you should know before clicking accept: what data they take, who they give it to, what rights you give up, and what you can opt out of.
 
-- **Rule mode** (always on): hand-written rules plus a small trained model that double-checks them. No AI server and no internet, and it is instant. Every flag points at the exact sentence it came from.
+- **Rule mode** (always on): hand-written rules plus a small trained model that double-checks them. The checking runs on your device with no AI server, and it is instant. Every flag points at the exact sentence it came from. (The browser extension also downloads the terms pages a site links to, so it can check them too.)
 - **AI mode** (optional): a small local model (tested: Qwen 3.5 4B/9B through Ollama; llama.cpp also works) reads only the clauses the rules pick out, writes a plain-English summary and catches what the rules missed. Every AI point must quote the text, and points whose quote isn't really in the document are thrown away.
 
 Every flag comes with an **Add / Check / Tell** next move (put a safeguard in place, check a setting, talk to someone), and the whole document gets a **boundary score** out of 100.
@@ -19,7 +19,7 @@ Not legal advice.
 | `src/ai/` | AI mode: talks to a local `llama-server`, checks every quote |
 | `app/` | Desktop UI (plain HTML/CSS/TS) |
 | `src-tauri/` | Tauri desktop shell for Windows; starts and stops `llama-server` |
-| `extension/` | Chrome/Edge extension that checks the page you're on |
+| `extension/` | Browser extension (Firefox, Edge, Chrome) that checks the page you're on |
 | `scripts/` | Zero-dependency build (strips types) and dev server |
 | `test/`, `eval/` | Unit tests, and scoring against the UNFAIR-ToS dataset |
 | `docs/` | Setup guides for AI mode, the desktop app and the extension |
@@ -34,7 +34,7 @@ npm run analyze -- samples/sample-tos.txt
 npm run dev
 ```
 
-`npm run dev` builds the UI and serves it at http://127.0.0.1:5173. `npm run build` writes `dist/app/` (desktop UI) and `dist/extension/` (load it unpacked in Chrome/Edge).
+`npm run dev` builds the UI and serves it at http://127.0.0.1:5173. `npm run build` writes `dist/app/` (desktop UI), `dist/extension/` (load it unpacked in Edge or Chrome) and `dist/firefox/` (load it in Firefox from about:debugging).
 
 - Desktop app (Tauri): [docs/desktop.md](docs/desktop.md)
 - AI mode (Ollama or llama-server): [docs/ai-mode.md](docs/ai-mode.md)
