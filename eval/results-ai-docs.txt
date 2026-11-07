@@ -1,0 +1,92 @@
+AI mode end to end: http://127.0.0.1:11434, 2026-11-06
+
+=== qwen3.5:4b (first call, including model load: 2.1 s)
+
+--- App sample (BrightBoard): 1133 chars, 13 rule flags
+time 11.0 s, 538 prompt + 717 output tokens
+AI points: 11 returned, 1 kept, 0 dropped (quote not in the clause), 10 repeated a rule flag or another AI point
+summary: By using BrightBoard, you agree to share your location and contacts, give the company broad rights to your posts and data for AI training, and accept non-refundable auto-renewing fees. You also waive your right to a jury trial and can only opt out of arbitration within 30 days of signing up.
+  [high data-sharing] Your posts and comments are used to train the company's artificial intelligence.
+      "We may use your boards and comments to train our AI models."
+
+--- Netflix terms (test split, lines 325-410): 13456 chars, 10 rule flags
+time 14.3 s, 2009 prompt + 891 output tokens
+AI points: 12 returned, 7 kept, 1 dropped (quote not in the clause), 4 repeated a rule flag or another AI point
+summary: By accepting these terms, you agree to pay a monthly fee for streaming movies and TV shows on your devices, with no refunds for unused content. You also grant Netflix a limited license to use your data for eligibility checks and may face account suspension if payments fail or terms are violated.
+  [high money] Your membership automatically renews every month until you cancel it.
+      "Your netflix membership will continue month-to-month until terminated."
+  [high money] You authorize automatic charging to your payment method unless you cancel before the billing date.
+      "you authorize us to charge your next month's membership fee to your payment method"
+  [high action] If your payment fails, Netflix may suspend your access until a valid payment method is provided.
+      "we may suspend your access to the service until we have obtained a valid payment method"
+  [high action] You are prohibited from using bots, scraping tools, or trying to bypass content protection measures.
+      "You also agree not to: circumvent, remove, alter, deactivate, degrade or thwart any of the content protections in the netflix service"
+  [high action] Netflix can suspend or terminate your account if you violate these terms or engage in illegal activity.
+      "We may terminate or restrict your use of our service if you violate these terms of use or are engaged in illegal or fraudulent use of the service"
+  [medium data-collection] Netflix collects device IDs and payment information to determine if you are eligible for the service.
+      "We may use information such as device id, method of payment or an account email address used with an existing or recent netflix membership to determine eligibility"
+  [low money] You are responsible for paying your own internet access charges, which may be significant.
+      "You are responsible for all internet access charges."
+
+--- Snap terms (test split, lines 411-578): 22268 chars, 24 rule flags
+time 17.1 s, 2042 prompt + 1092 output tokens
+AI points: 12 returned, 6 kept, 0 dropped (quote not in the clause), 6 repeated a rule flag or another AI point
+summary: By using Snapchat, you agree to strict rules about data collection, content usage, and account management. You are giving Snap broad rights to use and modify your content, including your name and likeness, often without compensation. Additionally, you accept limited liability protections, potential account termination, and specific legal dispute resolution processes depending on your location.
+  [high your-content] You will not receive compensation if your identity is used in advertisements or by business partners.
+      "you will not be entitled to any compensation from snap group limited, snap inc., or our affiliates and business partners if your name, likeness, or voice is conveyed through live, local, or other crowd-sourced services"
+  [high data-collection] Your information may be collected and transferred to countries with weaker data protection laws.
+      "your information may be collected and processed by snap group limited in the uk and snap inc. in the u.s., as well as their affiliates, and transferred outside of the country in which you reside"
+  [high your-rights] If you forget your passcode or enter it incorrectly too many times, you will lose access to your saved memories.
+      "if you lose or forget your memories passcode, or if you enter the wrong one too many times, you will lose access to any content you saved in the restricted area of memories"
+  [high money] Snap takes no responsibility for any content created, uploaded, or stored on their platform.
+      "Snap group limited, snap inc., and their affiliates take no responsibility and assume no liability for any content that you, another user, or a third party creates, uploads, posts, sends, receives, or stores on or through our services"
+  [high money] Snap is generally not liable for damages caused by other users, content issues, or unauthorized access.
+      "snap group limited, snap inc., and our affiliates, directors, officers, stockholders, employees, licensors, and agents, will not be liable for any indirect, incidental, special, consequential, punitive, or multiple damages, or any loss of profits or revenues"
+  [medium your-rights] Snap can access, review, and delete your content at any time for any reason.
+      "we may access, review, screen, and delete your content at any time and for any reason, including if we think your content violates these terms"
+
+=== qwen3.5:9b (first call, including model load: 17.2 s)
+
+--- App sample (BrightBoard): 1133 chars, 13 rule flags
+time 37.6 s, 538 prompt + 983 output tokens
+AI points: 12 returned, 0 kept, 0 dropped (quote not in the clause), 12 repeated a rule flag or another AI point
+summary: By using BrightBoard, you agree to share your location and contacts, allow your content to be used for AI training, and accept that your account can be closed without notice. You also agree to automatic yearly billing with no refunds and must resolve disputes through individual arbitration unless you opt out within 30 days.
+
+--- Netflix terms (test split, lines 325-410): 13456 chars, 10 rule flags
+time 48.5 s, 2009 prompt + 1240 output tokens
+AI points: 12 returned, 9 kept, 1 dropped (quote not in the clause), 2 repeated a rule flag or another AI point
+summary: You are agreeing to a monthly subscription for streaming movies and TV shows on your internet-connected devices. You authorize Netflix to charge your payment method automatically each month, and you can cancel anytime, though you generally won't get a refund for the current billing period. Netflix collects data to manage your account and may change terms, prices, or content availability with notice.
+  [high money] If you don't cancel before your billing date, we will charge your payment method for the next month.
+      "Unless you cancel your membership before your monthly billing date, you authorize us to charge your next month's membership fee to your payment method"
+  [high money] We will charge your card at the end of the free trial unless you cancel first.
+      "We will charge your payment method for your monthly membership fee at the end of the free trial period unless you cancel your membership prior to the end of the free trial period"
+  [high action] If your payment fails and you don't fix it or cancel, we will suspend your access.
+      "If a payment is not successfully settled, due to expiration, insufficient funds, or otherwise, and you do not change your payment method or cancel your account, we may suspend your access to the service until we have obtained a valid payment method."
+  [high your-content] You cannot download, share, or modify the content you watch.
+      "You agree not to archive, reproduce, distribute, modify, display, perform, publish, license, create derivative works from, offer for sale, or use (except as explicitly authorized in these terms of use) content and information contained on or obtained from or through the netflix service."
+  [medium money] Your membership continues month-to-month until you cancel it.
+      "Your netflix membership will continue month-to-month until terminated."
+  [medium data-collection] You must provide a valid payment method and internet access to use the service.
+      "To use the netflix service you must have internet access and a netflix ready device, and provide a current, valid, accepted method of payment"
+  [medium action] We can stop your free trial and hold your account if we think you aren't eligible.
+      "We reserve the right to revoke the free trial and put your account on hold in the event that we determine that you are not eligible."
+  [medium action] You can cancel anytime and keep access until the end of your current billing period.
+      "You can cancel your netflix membership at any time, and you will continue to have access to the netflix service through the end of your monthly billing period."
+  [low data-sharing] We use your device ID, payment info, and email to check if you qualify for the service.
+      "We may use information such as device id, method of payment or an account email address used with an existing or recent netflix membership to determine eligibility."
+
+--- Snap terms (test split, lines 411-578): 22268 chars, 24 rule flags
+time 55.7 s, 2042 prompt + 1436 output tokens
+AI points: 12 returned, 5 kept, 1 dropped (quote not in the clause), 6 repeated a rule flag or another AI point
+summary: By using the service, you agree to a broad license where Snap can use, modify, and distribute your content, especially for public features like Live Stories. You also agree to strict rules about data transfers, limited liability for Snap, and mandatory arbitration for business users.
+  [high your-content] You give Snap a free, worldwide license to use your content.
+      "Snap group limited grants you a personal, worldwide, royalty-free, non-assignable, nonexclusive, revocable, and non-sublicensable license to access and use the services."
+  [high your-content] For public features like Live Stories, Snap can create derivative works and broadcast your content.
+      "In addition to granting us the rights mentioned in the previous paragraph, you also grant us a license to create derivative works from, promote, exhibit, broadcast, syndicate, sublicense, publicly perform, and publicly display content submitted to live, local, or any other crowd-sourced services in any form and in any and all media or distribution methods (now known or later developed)."
+  [medium action] If you lose your passcode, you will permanently lose access to your saved memories.
+      "But here's a big warning: if you lose or forget your memories passcode, or if you enter the wrong one too many times, you will lose access to any content you saved in the restricted area of memories."
+  [low action] You cannot copy, modify, sell, or lease parts of the service.
+      "You may not copy, modify, distribute, sell, or lease any part of our services."
+  [info data-sharing] These terms apply to you even if you live outside the United States.
+      "These terms apply to you if you live outside the united states or if you are using the services on behalf of a business located outside the united states."
+

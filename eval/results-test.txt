@@ -1,0 +1,59 @@
+UNFAIR-ToS test: 1607 sentences, rules + trained model
+
+Clause type                Precision    Recall        F1   Count
+Content removal                45.8%     84.6%     59.5%      13
+Arbitration                    41.7%     71.4%     52.6%       7
+Unilateral change              91.3%     55.3%     68.9%      38
+Unilateral termination         76.5%     68.4%     72.2%      38
+Contract by using              94.1%     69.6%     80.0%      23
+Limitation of liability        77.8%     73.7%     75.7%      38
+Choice of law                 100.0%     92.3%     96.0%      13
+Jurisdiction                   93.8%     93.8%     93.8%      16
+All (micro)                    77.0%     72.0%     74.4%
+Average of the 8 (macro)                           74.8%
+
+LexGLUE scoring (9 labels): micro-F1 95.1%, macro-F1 77.4%
+
+Fair sentences wrongly flagged: 28 / 1435 (2.0%)
+
+Missed "Content removal":
+  - your content in memories might become unavailable for any number of reasons, including things like an operational glitch or a decision on our end to terminat...
+  - we are not obligated to publish any information or content on our service and can remove it in our sole discretion, with or without notice.
+
+Missed "Arbitration":
+  - any dispute or claim relating in any way to your use of any amazon service, or to any products or services sold or distributed by amazon or through amazon.co...
+  - any dispute, conflict, claim or controversy arising out of or broadly in connection with or relating to the services or these terms, including those relating...
+
+Missed "Unilateral change":
+  - if we believe, in our sole discretion, that any member of academia.edu or academia premium or other academia.edu paid services is in breach of our terms, or ...
+  - netflix regularly makes changes to the service, including the content library.
+  - we reserve the right to set storage limits for memories, and we may change these limits from time to time in our sole discretion.
+  - we may take any of these actions at any time, and when we do, we will try to notify you beforehand, but this won't always be possible.
+  - we also retain the right to create limits on use and storage at our sole discretion at any time.
+
+Missed "Unilateral termination":
+  - the licenses granted by amazon terminate if you do not comply with these conditions of use or any service terms.
+  - and if snap group limited becomes aware that one of its users has repeatedly infringed copyrights, we will take reasonable steps within our power to terminat...
+  - snap group limited may also terminate these terms with you at any time, for any reason.
+  - for example, we may deactivate your account due to prolonged inactivity, and we may reclaim your username at any time for any reason.
+  - we may stop (permanently or temporarily) providing the services or any features within the services to you or to users generally.
+
+Missed "Contract by using":
+  - by using any amazon service, you agree that the federal arbitration act, applicable federal law, and the laws of the state of washington, without regard to p...
+  - you understand that through your use of the services you consent to the collection and use (as set forth in the privacy policy) of this information, includin...
+  - any revisions to these terms and conditions will become effective the earlier of (i) the end of such 7-day period or (ii) the first time you access or use th...
+  - if you do register for or otherwise use our service you shall be deemed to confirm your acceptance of the terms and your agreement to be a party to this bind...
+  - by using the service, you acknowledge, accept and agree with all provisions of the privacy policy, including, without limitation, the use and treatment of th...
+
+Missed "Limitation of liability":
+  - you agree that we are not responsible for others' (including other members') content or information.
+  - we can not always prevent this misuse of our services, and you agree that we are not responsible for any such misuse.
+  - except to the limited extent it may be required by applicable law, linkedin is not responsible for these other sites and apps -- use these at your own risk.
+  - to the extent allowed under law, linkedin and its affiliates (and those that linkedin works with to provide the services) (a) disclaim all implied warranties...
+  - in no event will duolingo be responsible for the actions or inactions of any third party payment processor, including, but not limited to, system downtime or...
+
+Missed "Choice of law":
+  - in the unlikely event we end up in a legal dispute, we agree to resolve it in california courts (using california law) or dublin, ireland courts (using irish...
+
+Missed "Jurisdiction":
+  - in the unlikely event we end up in a legal dispute, we agree to resolve it in california courts (using california law) or dublin, ireland courts (using irish...

@@ -1,0 +1,13 @@
+{
+  // Node runs the .ts files directly (type stripping), so this is only for the editor and `tsc --noEmit`.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "test", "eval", "app", "extension", "scripts"]
+}

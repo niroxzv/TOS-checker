@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tickwise</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="4" stroke-width="2.5"/><path d="M8 16.5l5.5 5.5L24 10.5" stroke="#9DB33A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Tickwise</h1>
+      <p class="tagline">Know what you’re agreeing to before you tick.</p>
+    </div>
+    <label class="switch"><input type="checkbox" id="ai-mode"><span>AI mode</span></label>
+  </header>
+
+  <main>
+    <section class="panel">
+      <label for="tos-input" class="panel-title">Paste the terms, open a file, or try a sample</label>
+      <textarea id="tos-input" spellcheck="false" placeholder="Paste a terms of service or privacy policy here..."></textarea>
+      <div class="toolbar">
+        <button id="open-btn" type="button">Open file</button>
+        <input id="file-input" type="file" accept=".txt,.md,.html,.htm" hidden>
+        <button id="sample-btn" type="button">Try a sample</button>
+        <span class="spacer"></span>
+        <span class="hint">Ctrl+Enter</span>
+        <button id="check-btn" type="button" class="primary">Check</button>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <details id="settings" class="settings">
+        <summary>AI settings</summary>
+        <div class="settings-grid">
+          <label class="field">Server URL
+            <input id="set-ai-url" type="url" spellcheck="false" placeholder="http://127.0.0.1:8080">
+          </label>
+          <label class="field">Model name
+            <input id="set-ai-model" type="text" spellcheck="false" placeholder="Automatic (prefers Qwen)">
+          </label>
+          <label class="field tauri-only">llama-server path
+            <input id="set-server" type="text" placeholder="C:\llama\llama-server.exe">
+          </label>
+          <label class="field tauri-only">Model file (.gguf)
+            <input id="set-model" type="text" placeholder="C:\models\model.gguf">
+          </label>
+          <label class="field tauri-only">llama-server port
+            <input id="set-port" type="number" min="1" max="65535" value="8080">
+          </label>
+        </div>
+        <p class="muted">The AI is reached at <code id="ai-url">http://127.0.0.1:8080</code>. If nothing answers there, Ollama at <code>http://127.0.0.1:11434</code> is tried.</p>
+      </details>
+    </section>
+
+    <section id="output" class="output" hidden>
+      <div id="summary" class="hero" aria-live="polite"></div>
+      <div class="results">
+        <div id="ai-box" class="ai-box" aria-live="polite" hidden></div>
+        <div id="cards"></div>
+      </div>
+      <aside class="panel doc-panel">
+        <div class="doc-head">
+          <h2 class="panel-title">Document</h2>
+          <span id="doc-count" class="muted"></span>
+        </div>
+        <div id="doc" class="doc"></div>
+      </aside>
+    </section>
+  </main>
+
+  <footer>Tickwise. Not legal advice.</footer>
+</body>
+</html>

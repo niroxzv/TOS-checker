@@ -1,0 +1,27 @@
+{
+  "name": "tos-checker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Flags the parts of a terms of service that people should know about before they click accept.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "analyze": "node src/cli.ts",
+    "build": "node scripts/build-web.ts",
+    "serve": "node scripts/serve.ts",
+    "dev": "npm run build && npm run serve",
+    "desktop": "tauri dev",
+    "desktop:build": "tauri build",
+    "eval:fetch": "node eval/fetch-unfair-tos.ts",
+    "eval": "node eval/eval-unfair-tos.ts",
+    "eval:ai": "node eval/eval-ai.ts",
+    "eval:ai-docs": "node eval/ai-docs.ts",
+    "eval:rules": "node eval/eval-unfair-tos.ts test --rules-only",
+    "train": "node eval/dump-rule-hits.ts && python eval/train-model.py",
+    "test:extension": "node scripts/test-extension.ts",
+    "pack:extension": "npm run build && tar.exe -a -c -f tickwise-extension.zip -C dist/extension ."
+  }
+}

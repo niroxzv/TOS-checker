@@ -1,0 +1,30 @@
+# AI mode benchmark: qwen3.5:9b (Ollama 0.40.14, RTX 4060 Laptop 8 GB), 6 Nov 2026
+# Command: npm run eval:ai -- test --model qwen3.5:9b --stratified
+# COVERAGE: NOT the full 1607-sentence test split. Stratified subset: all 172 unfair sentences
+# plus 172 of the 1435 fair ones (every 8th). The full split (~11-15 min) didn't fit the time left.
+# A balanced subset flatters precision: with 22.1% of fair sentences flagged, the full split's 1435
+# fair sentences would give roughly 300 false flags, so precision there would be far lower.
+# Recall and the fair-flagged rate are fair estimates. qwen3.5:4b was not benchmarked.
+# "Rules only (no AI)" is the engine as it ran at that moment (rules + trained model, the app's default),
+# scored on the same 344 sentences, so that row is comparable with the AI row.
+
+UNFAIR-ToS test: 344 sentences (stratified: all 172 unfair + 172 of 1435 fair), model qwen3.5:9b at http://127.0.0.1:11434
+18 requests of up to 20 sentences, 194 s (1.8 sentences/s), 20180 prompt + 3879 output tokens
+
+Clause type                Precision    Recall        F1   Count
+Limitation of liability        63.8%     97.4%     77.1%      38
+Unilateral termination         87.2%     89.5%     88.3%      38
+Unilateral change              68.9%     81.6%     74.7%      38
+Content removal                68.4%    100.0%     81.3%      13
+Contract by using              94.1%     69.6%     80.0%      23
+Choice of law                  76.5%    100.0%     86.7%      13
+Jurisdiction                   84.2%    100.0%     91.4%      16
+Arbitration                    35.0%    100.0%     51.9%       7
+All (micro)                    71.4%     89.8%     79.5%
+
+Fair sentences wrongly flagged: 38 / 172 (22.1%)
+
+Micro-F1 on the same sentences    Precision    Recall        F1  Fair flagged
+Rules only (no AI)                     90.5%     72.0%     80.2%  1.2%
+AI only (qwen3.5:9b)                   71.4%     89.8%     79.5%  22.1%
+Rules or AI                            69.9%     92.5%     79.6%  22.7%

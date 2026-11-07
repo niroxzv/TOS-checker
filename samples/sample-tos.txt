@@ -1,0 +1,31 @@
+ACME NOTES - TERMS OF SERVICE
+Last updated: 1 November 2026
+(A made-up ToS for testing. Acme Notes is not a real app.)
+
+1. Agreeing to these terms
+By using Acme Notes, you agree to be bound by these Terms. If you do not agree, do not use the app.
+
+2. Your account
+You must be at least 13 years old to use the Service. You are responsible for keeping your password safe.
+We may suspend or terminate your account at any time, for any reason, without notice.
+
+3. Your content
+You keep ownership of the notes you create. By uploading content, you grant us a worldwide, royalty-free,
+perpetual license to host, copy, modify and display it. We may remove any content that we consider
+inappropriate. We may use your content to train our AI models and improve our features.
+
+4. Privacy
+We collect your precise location when the app is open. With your permission, the app will upload your
+address book to help you find friends. We do not sell your personal information. We may share your
+personal information with our advertising partners. We may retain your information for up to two years after you delete your account.
+
+5. Payments
+Your subscription will automatically renew each month until you cancel. All payments are non-refundable.
+
+6. Changes
+We may modify these Terms at any time. Your continued use of the app constitutes acceptance of the new Terms.
+
+7. Disputes
+Any dispute will be resolved by binding individual arbitration, and you waive any right to take part in a class action.
+You can opt out of this arbitration agreement by emailing optout@acme.example within 30 days of signing up.
+These Terms are governed by the laws of the State of Delaware. In no event will Acme be liable for any indirect damages.

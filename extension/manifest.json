@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Tickwise",
+  "version": "0.3.0",
+  "description": "Know what you're agreeing to before you tick. Flags what terms of service and privacy policies say about your data, your rights and your money. Not legal advice.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Tickwise: check the terms before you tick"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "optional_host_permissions": ["<all_urls>"]
+}
