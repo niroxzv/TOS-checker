@@ -13,7 +13,7 @@
 // Shorter than the Edge test: Allow, Not OK, selected text and terms changes run the same code, tested there.
 //
 // Env: FIREFOX=<path to firefox.exe>   HEADED=1 to watch it
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { existsSync, lstatSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -74,11 +74,11 @@ class Bidi {
       else call?.resolve(msg.result);
     });
   }
-  send(method: string, params: object = {}): Promise<any> {
+  send(method: string, params: object = {}, timeout = TIMEOUT): Promise<any> {
     const id = ++this.#next;
     this.ws.send(JSON.stringify({ id, method, params }));
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`${method} timed out`)), TIMEOUT);
+      const timer = setTimeout(() => reject(new Error(`${method} timed out`)), timeout);
       this.#pending.set(id, { resolve: (v) => (clearTimeout(timer), resolve(v)), reject: (e) => (clearTimeout(timer), reject(e)) });
     });
   }
@@ -90,35 +90,68 @@ class Bidi {
   }
 }
 
+type Started = { proc: ChildProcess; profile: string; bidi: Bidi };
+
+/**
+ * Starts Firefox with a throwaway profile and opens a WebDriver BiDi session. Firefox 159 sometimes never
+ * finishes starting with a new profile (session.new gets no answer, seen in about half the starts on the
+ * test PC). A good start answers in about 2 seconds, so after 15 it's stopped and started again.
+ */
+async function launch(firefox: string): Promise<Started> {
+  for (let attempt = 1; ; attempt++) {
+    const profile = mkdtempSync(join(tmpdir(), "tickwise-firefox-"));
+    // A fixed internal id, so the popup's moz-extension:// address is known in advance.
+    writeFileSync(
+      join(profile, "user.js"),
+      [
+        `user_pref("extensions.webextensions.uuids", ${JSON.stringify(JSON.stringify({ [ADDON_ID]: UUID }))});`,
+        `user_pref("browser.shell.checkDefaultBrowser", false);`,
+        `user_pref("datareporting.policy.dataSubmissionEnabled", false);`,
+        // The test site's names point at this machine, over plain http.
+        `user_pref("network.dns.localDomains", "${SITE}, ${LEGAL}");`,
+        `user_pref("dom.security.https_first", false);`,
+      ].join("\n"),
+    );
+    const port = 9300 + Math.floor(Math.random() * 500);
+    // System access lets the test click Tickwise's toolbar action from the browser window, as a user would.
+    const args = ["--remote-debugging-port", String(port), "--remote-allow-system-access", "--profile", profile, "--no-remote", "about:blank"];
+    if (process.env.HEADED !== "1") args.unshift("--headless");
+    const proc = spawn(firefox, args, { stdio: "ignore", env: { ...process.env, MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: "1" } });
+    try {
+      const bidi = new Bidi(await connect(`ws://127.0.0.1:${port}/session`));
+      await bidi.send("session.new", { capabilities: {} }, 15_000);
+      console.log(`Profile: ${profile}`);
+      return { proc, profile, bidi };
+    } catch (err) {
+      await stop({ proc, profile });
+      if (attempt === 5) throw err;
+      console.log(`Firefox didn't finish starting (${err instanceof Error ? err.message : err}); starting it again.`);
+    }
+  }
+}
+
+/** Waits for Firefox to quit (or ends it and its child processes), then deletes the profile. */
+async function stop({ proc, profile }: { proc: ChildProcess; profile: string }): Promise<void> {
+  if (proc.exitCode === null) await Promise.race([new Promise((r) => proc.once("exit", r)), sleep(5000)]);
+  if (proc.exitCode === null) {
+    if (process.platform === "win32" && proc.pid) spawnSync("taskkill", ["/pid", String(proc.pid), "/t", "/f"], { stdio: "ignore" });
+    else proc.kill("SIGKILL");
+    await sleep(500);
+  }
+  rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
+}
+
 async function main(): Promise<void> {
   if (!existsSync(join(EXTENSION_DIR, "manifest.json"))) throw new Error("dist/firefox is missing. Run `npm run build` first.");
   const firefox = findFirefox();
-  const profile = mkdtempSync(join(tmpdir(), "tickwise-firefox-"));
-  // A fixed internal id, so the popup's moz-extension:// address is known in advance.
-  writeFileSync(
-    join(profile, "user.js"),
-    [
-      `user_pref("extensions.webextensions.uuids", ${JSON.stringify(JSON.stringify({ [ADDON_ID]: UUID }))});`,
-      `user_pref("browser.shell.checkDefaultBrowser", false);`,
-      `user_pref("datareporting.policy.dataSubmissionEnabled", false);`,
-      // The test site's names point at this machine, over plain http.
-      `user_pref("network.dns.localDomains", "${SITE}, ${LEGAL}");`,
-      `user_pref("dom.security.https_first", false);`,
-    ].join("\n"),
-  );
   const site = await startSite();
-  const port = 9300 + Math.floor(Math.random() * 500);
-  console.log(`Firefox: ${firefox}\nProfile: ${profile}`);
-  // System access lets the test click Tickwise's toolbar action from the browser window, as a user would.
-  const args = ["--remote-debugging-port", String(port), "--remote-allow-system-access", "--profile", profile, "--no-remote", "about:blank"];
-  if (process.env.HEADED !== "1") args.unshift("--headless");
-  const proc = spawn(firefox, args, { stdio: "ignore", env: { ...process.env, MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: "1" } });
+  console.log(`Firefox: ${firefox}`);
 
+  let started: Started | null = null;
   let bidi: Bidi | null = null;
   try {
-    const ws = await connect(`ws://127.0.0.1:${port}/session`);
-    bidi = new Bidi(ws);
-    await bidi.send("session.new", { capabilities: {} });
+    started = await launch(firefox);
+    bidi = started.bidi;
     const { product } = await bidi.send("session.status").catch(() => ({ product: "" }));
     await bidi.send("session.subscribe", { events: ["log.entryAdded"] });
 
@@ -196,10 +229,7 @@ async function main(): Promise<void> {
     check("test ran to the end", false, err instanceof Error ? err.message : String(err));
   } finally {
     await bidi?.send("browser.close").catch(() => {});
-    await Promise.race([new Promise((r) => proc.once("exit", r)), sleep(5000)]);
-    proc.kill();
-    await sleep(500);
-    rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
+    if (started) await stop(started);
     site.close();
   }
   const failed = results.filter((r) => !r.ok).length;
