@@ -14,7 +14,8 @@ const denies = (verbs: string) => new RegExp(String.raw`(?:\bnot|\bnever|\bcanno
  * ("Airbnb may…", "Linden Lab further reserves the right…"), so any subject counts except you or the users.
  */
 const NOT_THEM = String.raw`(?!(?:you|your|users?|members?|it|this|that|these|those|which|who|they|i|and|or|but|nor|not|there|as|if|terms?|agreement|features?|software|material|services?|products?|content|apps?|administrator|guidelines|policies|prices?|rules)\b)`;
-const THEY_MAY = String.raw`\b${NOT_THEM}[a-z][\w.'&-]*,?\s+(?:also\s+|further\s+|nevertheless\s+|expressly\s+|hereby\s+|\(?at\s+(?:its|our)\s+(?:sole\s+)?discretion\)?,?\s+)?(?:(?:may|can|might)(?!\s+(?:not\b|be\b|only\b|ask\b|require\b|provide\b|send\b|apply\b))|reserves?|retains?|has\s+the\s+right|have\s+the\s+right|shall\s+have\s+the\s+right|is\s+entitled|are\s+entitled)\b`;
+// The name is capped at 40 characters: left open, a long run like "a.b.a.b." takes seconds to rule out.
+const THEY_MAY = String.raw`\b${NOT_THEM}[a-z][\w.'&-]{0,40},?\s+(?:also\s+|further\s+|nevertheless\s+|expressly\s+|hereby\s+|\(?at\s+(?:its|our)\s+(?:sole\s+)?discretion\)?,?\s+)?(?:(?:may|can|might)(?!\s+(?:not\b|be\b|only\b|ask\b|require\b|provide\b|send\b|apply\b))|reserves?|retains?|has\s+the\s+right|have\s+the\s+right|shall\s+have\s+the\s+right|is\s+entitled|are\s+entitled)\b`;
 /** A verb with its object close behind, e.g. near("remove|delete", "content"). */
 const near = (verbs: string, objects: string, gap = 80) => String.raw`\b(?:${verbs})\w*\b[^.]{0,${gap}}?\b(?:${objects})\b`;
 /** Every lookahead must hit somewhere in the clause, in any order. */

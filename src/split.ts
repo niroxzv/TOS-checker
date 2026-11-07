@@ -4,9 +4,11 @@ import type { Clause } from "./types.ts";
 const ABBREVIATION = /\b(?:e\.g|i\.e|etc|inc|ltd|llc|co|corp|u\.s|u\.k|vs|mr|mrs|ms|dr|st)\.$/i;
 
 // Sentence ends: . ! ? followed by whitespace.
-// Line breaks also end a clause, unless the next line starts lowercase
-// (that's a hard-wrapped sentence, e.g. text copied out of a PDF).
-const BOUNDARY = /[.!?]+(?=\s|$)|\n(?!\s*[a-z])/g;
+// Line breaks also end a clause, unless the next line starts with a lowercase letter, in any alphabet and
+// after any hidden characters (that's a hard-wrapped sentence, e.g. text copied out of a PDF), even with
+// one blank line in between.
+// The lookahead stops at the next line break but one: looking past every blank line is slow on long runs of them.
+const BOUNDARY = /[.!?]+(?=\s|$)|\n(?![^\S\n]*(?:\n[^\S\n]*)?\p{Cf}*\p{Ll})/gu;
 
 /** Split a ToS into sentence-sized clauses, keeping each one's position in the original text. */
 export function splitClauses(text: string): Clause[] {
