@@ -11,7 +11,7 @@
 - [x] Small trained model (`src/model.ts`): logistic regression over words, word pairs and which rules fired. It confirms or adds the 8 benchmark clause types, about 600 KB, and runs on the device. Retrain with `npm run train`.
 - [x] Disguised text doesn't hide a clause: hidden characters (soft hyphens, zero-width spaces), full-width letters and Latin words spelt with look-alike Cyrillic or Greek letters are read as plain text. Flags still quote the original.
 - [x] No slow patterns: 200 KB of hostile text (like "a.b.a.b." or thousands of blank lines) is checked in about 0.1 s. Before 7 Nov 2026 it took tens of seconds.
-- [x] All tests pass with `npm test` (197).
+- [x] All tests pass with `npm test` (204).
 
 ### Desktop / web app (`app/`)
 - [x] Paste the terms, open a file, or try a sample, then press Check (or Ctrl+Enter).
@@ -55,7 +55,7 @@
   | No AI (rules + trained model) | 90.5% | 72.0% | 80.2% | 1.2% |
   | AI only (qwen3.5:9b) | 71.4% | 89.8% | 79.5% | 22.1% |
 
-  The AI catches more, with higher recall, but wrongly flags about 1 in 5 fair sentences. That's why AI mode only **adds** checked points on top of the no-AI flags and never replaces them. The full table is in `eval/results-ai-test.txt`.
+  The AI catches more, with higher recall, but wrongly flags about 1 in 5 fair sentences. That's why AI mode only **adds** checked points on top of the no-AI flags and never replaces them. The full table is in `eval/results-ai-test.txt`. It was measured before the 8 Nov 2026 rule changes, which moved the no-AI test scores by under one point.
 - [ ] Not done: the full 1,607-sentence AI run, any benchmark with 4b, and a real llama-server or the desktop (Tauri) flow.
 
 ### Demo video
@@ -66,8 +66,8 @@
 | Version | LexGLUE micro-F1 | LexGLUE macro-F1 | Micro-F1, 8 unfair types | Fair sentences wrongly flagged |
 |---|---|---|---|---|
 | Rules before tuning | | | 35.3% | 10.7% |
-| Rules after tuning | 94.4% | 76.8% | 73.1% | 2.8% |
-| **Rules + trained model (shipped)** | **95.1%** | **77.4%** | **74.4%** | **2.0%** |
+| Rules after tuning | 94.6% | 77.2% | 73.5% | 2.7% |
+| **Rules + trained model (shipped)** | **95.2%** | **77.9%** | **74.9%** | **1.9%** |
 | Published TF-IDF + SVM baseline | 94.7% | 75.0% | | |
 | Published Legal-BERT, fine-tuned (too big for an extension) | 96.0% | 83.0% | | |
 
@@ -75,6 +75,10 @@
 - Train and validation scores are not shown: the model was trained on those splits, so they would flatter it.
 - The full tables are in `eval/results-test.txt` (shipped) and `eval/results-test-rules-only.txt`.
 - To rerun them: `npm run eval -- test` and `npm run eval:rules`.
+- 8 Nov 2026: arbitration and unilateral termination were tuned again, on train and validation only, then checked once on test. Arbitration precision went from 41.7% to 45.5%. Unilateral termination recall went from 68.4% to 73.7%, and its precision from 76.5% to 73.7%.
+  - Arbitration now skips class-arbitration waivers, "not combine" clauses, the Federal Arbitration Act line, and court clauses that only point to the arbitration section.
+  - Unilateral termination now also catches "may stop providing the service", "grounds for termination", "has discretion to terminate", "terminates automatically if you…", "withdraw access" and "may suspend users".
+  - Most arbitration flags still counted wrong are real arbitration sentences. UNFAIR-ToS marks only one sentence per arbitration section as unfair, so "disputes must be resolved by binding arbitration" in a summary notice counts as a mistake. Removing those would hide true clauses, so they stay.
 - Bigger variants (character n-grams, larger vocabularies) did not beat this model in cross-validation: all scored within 0.5 points. Plain-text models top out around here. The next real gain needs a transformer or the local LLM (see AI mode).
 
 ## To do
@@ -82,8 +86,8 @@
 - [ ] Try the extension by hand in Firefox (about:debugging) and Chrome. The Firefox test drives the add-on from a script, and Chrome isn't installed here.
 - [ ] Submit the Firefox build to addons.mozilla.org, so it installs and updates like any other add-on. Steps: `docs/extension.md`.
 - [ ] **Desktop build (Tauri).** This needs Rust and app icons (`npx tauri icon`). Untested.
-- [ ] **Desktop: limit what `start_ai` runs.** It starts any program path the app window sends it (`src-tauri/src/lib.rs`), which matters if the window ever loads something else, as in dev mode. Accept only a path the user picked in a file dialog. Needs Rust to build and test.
-- [ ] Raise arbitration precision (37.5% on test) and unilateral-termination recall.
+- [x] **Desktop: limit what `start_ai` runs** (8 Nov 2026, code only). The window no longer sends a program path: the user picks llama-server and the model in the app's own file dialog (`pick_ai_file`), and `start_ai` takes only a port. The web UI side was checked in a browser with a stand-in for the desktop app. The Rust side has not been compiled yet (needs Rust).
+- [x] Raise arbitration precision and unilateral-termination recall (8 Nov 2026, see "Accuracy").
 - [ ] More rules, for example children's data and in-app purchases.
 - [ ] Translate the advice into Chinese, Malay and Tamil.
 - [ ] Alert users when an app's terms change without them opening the page. Today the extension notices a change only when you click its icon on that page again.

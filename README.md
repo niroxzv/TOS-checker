@@ -9,6 +9,10 @@ Every flag comes with an **Add / Check / Tell** next move (put a safeguard in pl
 
 Not legal advice.
 
+![The extension on a sign-up page: a boundary score of 22 out of 100, from the page and the two policies it links to](docs/screenshots/extension-in-context.png)
+
+![A flag in the web app: the exact quote, then Add / Check / Tell, next to the highlighted document](docs/screenshots/app-flag.png)
+
 ## Layout
 
 | Folder | What it is |
@@ -67,7 +71,7 @@ npm run eval
 npm run eval -- test --misses
 ```
 
-The first command downloads the dataset to `eval/data/`. The model is trained on train + validation, so only the **test** split is a fair score. With LexGLUE scoring, the held-out test split gives 95.1% micro-F1 and 77.4% macro-F1. The published TF-IDF + SVM baseline gets 94.7 / 75.0, and Legal-BERT 96.0 / 83.0. Over the 8 unfair types alone, micro-F1 is 74.4%. `--misses` prints sentences the rules missed, which is the quickest way to find the next rule to write.
+The first command downloads the dataset to `eval/data/`. The model is trained on train + validation, so only the **test** split is a fair score. With LexGLUE scoring, the held-out test split gives 95.2% micro-F1 and 77.9% macro-F1. The published TF-IDF + SVM baseline gets 94.7 / 75.0, and Legal-BERT 96.0 / 83.0. Over the 8 unfair types alone, micro-F1 is 74.9%. `--misses` prints sentences the rules missed, which is the quickest way to find the next rule to write.
 
 The data rules (location, selling data, AI training and so on) aren't in UNFAIR-ToS. OPP-115, a set of privacy policies labelled by data practice, is the dataset to measure those against later.
 

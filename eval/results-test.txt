@@ -2,19 +2,19 @@ UNFAIR-ToS test: 1607 sentences, rules + trained model
 
 Clause type                Precision    Recall        F1   Count
 Content removal                45.8%     84.6%     59.5%      13
-Arbitration                    41.7%     71.4%     52.6%       7
+Arbitration                    45.5%     71.4%     55.6%       7
 Unilateral change              91.3%     55.3%     68.9%      38
-Unilateral termination         76.5%     68.4%     72.2%      38
+Unilateral termination         73.7%     73.7%     73.7%      38
 Contract by using              94.1%     69.6%     80.0%      23
 Limitation of liability        77.8%     73.7%     75.7%      38
 Choice of law                 100.0%     92.3%     96.0%      13
 Jurisdiction                   93.8%     93.8%     93.8%      16
-All (micro)                    77.0%     72.0%     74.4%
-Average of the 8 (macro)                           74.8%
+All (micro)                    76.8%     73.1%     74.9%
+Average of the 8 (macro)                           75.4%
 
-LexGLUE scoring (9 labels): micro-F1 95.1%, macro-F1 77.4%
+LexGLUE scoring (9 labels): micro-F1 95.2%, macro-F1 77.9%
 
-Fair sentences wrongly flagged: 28 / 1435 (2.0%)
+Fair sentences wrongly flagged: 27 / 1435 (1.9%)
 
 Missed "Content removal":
   - your content in memories might become unavailable for any number of reasons, including things like an operational glitch or a decision on our end to terminat...
@@ -36,7 +36,7 @@ Missed "Unilateral termination":
   - and if snap group limited becomes aware that one of its users has repeatedly infringed copyrights, we will take reasonable steps within our power to terminat...
   - snap group limited may also terminate these terms with you at any time, for any reason.
   - for example, we may deactivate your account due to prolonged inactivity, and we may reclaim your username at any time for any reason.
-  - we may stop (permanently or temporarily) providing the services or any features within the services to you or to users generally.
+  - we can each end this contract anytime we want.
 
 Missed "Contract by using":
   - by using any amazon service, you agree that the federal arbitration act, applicable federal law, and the laws of the state of washington, without regard to p...

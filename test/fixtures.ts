@@ -85,7 +85,12 @@ export const FIXTURES: Record<string, { hits: string[]; misses: string[] }> = {
   },
   arbitration: {
     hits: ["Any dispute will be resolved by binding individual arbitration."],
-    misses: ["Moderators will not act in an arbitrary way."],
+    misses: [
+      "Moderators will not act in an arbitrary way.",
+      "You and we agree not to combine a claim that is subject to arbitration with a claim that is not.",
+      "Any court case will be brought in Singapore, subject to the arbitration provisions below.",
+      "This section waives your right to have a dispute resolved as a class action or class arbitration.",
+    ],
   },
   class_action_waiver: {
     hits: [
@@ -108,6 +113,10 @@ export const FIXTURES: Record<string, { hits: string[]; misses: string[] }> = {
       "We may suspend or terminate your account at any time for any reason.",
       "We reserve the right to disable your access to the Service without notice.",
       "Your account may be suspended without notice.",
+      "We may stop providing all or part of the service to you.",
+      "Cheating may be grounds for termination of your account.",
+      "These terms terminate automatically if you fail to comply with them.",
+      "The company has discretion to terminate the account of any user.",
     ],
     misses: [
       "You may close your account at any time from the settings page.",

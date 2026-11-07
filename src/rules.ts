@@ -169,7 +169,12 @@ export const RULES: Rule[] = [
     ],
     unless: [/\b(not|never)\s+(contain|require|include|use)\w*\s+(an?\s+)?arbitration\b/i, /\bnot (obliged|required) to participate\b/i,
       /\bopt[- ]?out of (this|the) agreement to arbitrate\b/i, /\bnot (subject to|required to be resolved through) arbitration\b/i,
-      /\bgoverned by the (us |u\.s\. )?(federal )?arbitration act\b/i, /\bin your favou?r\b/i, /\bshall be a retired judge\b/i],
+      /\bgoverned by the (us |u\.s\. )?(federal )?arbitration act\b/i, /\bin your favou?r\b/i, /\bshall be a retired judge\b/i,
+      // Details around the clause, not the clause itself: not mixing claims, the Federal Arbitration Act line,
+      // class-arbitration waivers, and court clauses that only point to the arbitration section.
+      /\bnot (to )?combine\b/i, /\barbitration act\b[^.]{0,40}\bgoverns?\b/i, /\bclass arbitration\b/i,
+      /\bnot subject to (the )?[^.]{0,12}arbitration\b/i,
+      /\bsubject to (the )?([\w"'-]+ ){0,4}arbitration (provisions?|section|clause|agreement)\b/i],
   },
   {
     id: "class_action_waiver",
@@ -223,6 +228,12 @@ export const RULES: Rule[] = [
       /\bpolicy\b[^.]{0,40}\b(terminat|disabl)\w*\b[^.]{0,80}\b(accounts?|privileges)\b/i,
       /\b(adopted|have) a policy of terminating\b/i,
       /\byour right to use\b[^.]{0,40}\b(cease|end)\w*\b/i,
+      /\b(may|can|might|will|right to)\s+(also\s+)?stop\s+(\([^)]*\)\s+)?providing\b/i,
+      /\bgrounds for (the )?(immediate )?(terminat|suspen|cancel)\w*/i,
+      /\b(has|have|retains?)\s+(the\s+)?(sole\s+|absolute\s+|full\s+)?discretion\b[^.]{0,60}\b(terminat|suspend|disabl)\w*\b[^.]{0,40}\b(accounts?|access|users?)\b/i,
+      /\bterminate[sd]?\s+automatically\b|\bautomatically\s+terminate[sd]?\s+if\b/i,
+      all(THEY_MAY, near("withdraw", "access|right to use|service|services|subscriptions?")),
+      all(THEY_MAY, near("suspend|terminat|disabl|deactivat|ban(?!ner)", "users?")),
     ],
     // "You may terminate your account" is your right, not theirs.
     // Known gap: a clause giving both sides that right is skipped too.
