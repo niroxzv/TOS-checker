@@ -272,7 +272,7 @@ async function demo(port: number): Promise<number> {
   // Tab 1: the app, with old choices cleared and the AI model set.
   const app = await openTab(`http://127.0.0.1:${port}/`);
   const s = app.sessionId;
-  await evaluate(s, `(localStorage.removeItem("tos-checker.prefs"), localStorage.setItem("tos-checker.settings", ${JSON.stringify(JSON.stringify({ aiUrl: "", aiModel: MODEL, serverPath: "", modelPath: "", port: 8080, aiMode: false }))}), true)`);
+  await evaluate(s, `(localStorage.removeItem("tos-checker.prefs"), localStorage.setItem("tos-checker.settings", ${JSON.stringify(JSON.stringify({ aiUrl: "", aiModel: MODEL, port: 8080, aiMode: false }))}), true)`);
   await cdp.send("Page.reload", {}, s);
   await waitFor("the app to load", () => evaluate(s, `document.readyState === "complete" && !!document.getElementById("sample-btn")`));
   await setupView(s);
@@ -471,7 +471,7 @@ async function demoExtension(port: number): Promise<number> {
 async function demoShort(port: number): Promise<number> {
   const app = await openTab(`http://127.0.0.1:${port}/`);
   const s = app.sessionId;
-  await evaluate(s, `(localStorage.removeItem("tos-checker.prefs"), localStorage.setItem("tos-checker.settings", ${JSON.stringify(JSON.stringify({ aiUrl: "", aiModel: MODEL, serverPath: "", modelPath: "", port: 8080, aiMode: false }))}), true)`);
+  await evaluate(s, `(localStorage.removeItem("tos-checker.prefs"), localStorage.setItem("tos-checker.settings", ${JSON.stringify(JSON.stringify({ aiUrl: "", aiModel: MODEL, port: 8080, aiMode: false }))}), true)`);
   await cdp.send("Page.reload", {}, s);
   await waitFor("the app to load", () => evaluate(s, `document.readyState === "complete" && !!document.getElementById("sample-btn")`));
   await setupView(s);

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Core permissions for the main window. The app's own commands (start_ai, stop_ai, ai_running) are allowed by default and need no entry here.",
+  "description": "Core permissions for the main window. The app's own commands (start_ai, stop_ai, ai_running, ai_files, pick_ai_file) are allowed by default and need no entry here. The dialog plugin is only called from Rust, so the window gets no dialog permissions.",
   "windows": ["main"],
   "permissions": ["core:default"]
 }

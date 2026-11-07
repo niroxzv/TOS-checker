@@ -34,14 +34,16 @@ The app does not ship a model. AI mode needs:
 - a `llama-server.exe` from a llama.cpp release (<https://github.com/ggml-org/llama.cpp/releases>), and
 - a GGUF model file.
 
-Set both paths, and the port, in the app's settings. The app then runs
+In the app's AI settings, press **Choose** next to llama-server and next to the model file, and set the port. The app remembers both files in `ai-files.json` in its config folder. It then runs
 `<llama-server> -m <model.gguf> -c 8192 --host 127.0.0.1 --port <port>` with no console window, and stops it when the app exits. Turning AI mode off leaves it running.
 
 The UI calls these through `window.__TAURI__.core.invoke`. That object only exists in the desktop app, so check for it first:
 
 | Call | Result |
 | --- | --- |
-| `invoke("start_ai", { serverPath, modelPath, port })` | Starts the server. Fails if one is already running. `port` must be a number. |
+| `invoke("pick_ai_file", { which })` | `which` is `"server"` or `"model"`. Opens a file dialog and keeps the file the user picks; Cancel keeps the old one. Returns `{ server, model }` (paths or `null`). |
+| `invoke("ai_files")` | The same `{ server, model }`, without a dialog. |
+| `invoke("start_ai", { port })` | Starts the picked server with the picked model. Fails if either isn't picked yet, or if a server is already running. `port` must be a number. |
 | `invoke("stop_ai")` | Kills the server and waits for it to exit. Does nothing if none is running. |
 | `invoke("ai_running")` | `true` while the process is alive. |
 
@@ -50,5 +52,7 @@ The UI calls these through `window.__TAURI__.core.invoke`. That object only exis
 ## Security
 
 The content security policy allows only the app's own files, inline styles, and connections to `http://127.0.0.1:*` (llama-server) and Tauri IPC. Inline scripts, inline event handlers and remote servers are blocked.
+
+The window can't choose what program the app runs. `start_ai` takes only a port, and runs the files the user picked in the app's own file dialog. So even a page that ends up in the window (in dev mode it loads `http://127.0.0.1:5173`, and anything else listening on that port would be shown) can only open the dialog, not start a program of its choice.
 
 If the app crashes or is ended from Task Manager, llama-server can keep running. End `llama-server.exe` in Task Manager if that happens.

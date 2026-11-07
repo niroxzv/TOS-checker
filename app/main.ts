@@ -13,9 +13,7 @@ interface Settings {
   aiUrl: string;
   /** Model name to ask for, e.g. "qwen3.5:9b". Blank: the AI module picks one. */
   aiModel: string;
-  /** Desktop only: how to start llama-server. */
-  serverPath: string;
-  modelPath: string;
+  /** Desktop only: the port llama-server listens on. Its files are picked in a dialog and kept by the desktop app. */
   port: number;
   aiMode: boolean;
 }
@@ -44,10 +42,12 @@ interface AiModule {
   analyzeWithAi(text: string, ruleFlags: Flag[], opts?: AiOptions): Promise<AiResult>;
 }
 interface TauriGlobal { core: { invoke(cmd: string, args?: Record<string, unknown>): Promise<unknown> } }
+/** The llama-server and model file picked in the desktop app (null until picked). */
+interface AiFiles { server: string | null; model: string | null }
 
 const PREFS_KEY = "tos-checker.prefs";
 const SETTINGS_KEY = "tos-checker.settings";
-const DEFAULT_SETTINGS: Settings = { aiUrl: "", aiModel: "", serverPath: "", modelPath: "", port: 8080, aiMode: false };
+const DEFAULT_SETTINGS: Settings = { aiUrl: "", aiModel: "", port: 8080, aiMode: false };
 const SEVERITIES: Severity[] = ["high", "medium", "low", "info"];
 const SEVERITY_LABEL: Record<Severity, string> = { high: "High", medium: "Medium", low: "Low", info: "Info" };
 const CATEGORY_LABEL: Record<Category, string> = {
@@ -122,8 +122,10 @@ const docEl = byId("doc");
 const docCountEl = byId("doc-count");
 const aiToggle = byId<HTMLInputElement>("ai-mode");
 const settingsEl = byId<HTMLDetailsElement>("settings");
-const setServer = byId<HTMLInputElement>("set-server");
-const setModel = byId<HTMLInputElement>("set-model");
+const pickServer = byId<HTMLButtonElement>("pick-server");
+const pickModel = byId<HTMLButtonElement>("pick-model");
+const serverFileEl = byId("server-file");
+const modelFileEl = byId("model-file");
 const setPort = byId<HTMLInputElement>("set-port");
 const setAiUrl = byId<HTMLInputElement>("set-ai-url");
 const setAiModel = byId<HTMLInputElement>("set-ai-model");
@@ -424,14 +426,16 @@ async function runAi(): Promise<void> {
 async function startAi(): Promise<void> {
   const tauri = getTauri();
   if (!tauri) return;
-  if (!settings.serverPath || !settings.modelPath) {
+  const files = (await tauri.core.invoke("ai_files").catch(() => null)) as AiFiles | null;
+  if (!files?.server || !files.model) {
     settingsEl.open = true;
-    setServer.focus();
-    return showAiHelp("Set the llama-server path and the model path in AI settings first.");
+    (files?.server ? pickModel : pickServer).focus();
+    return showAiHelp("Choose llama-server and the model file in AI settings first.");
   }
   showAiLoading("Starting the local AI. Loading the model can take a minute...");
   try {
-    await tauri.core.invoke("start_ai", { serverPath: settings.serverPath, modelPath: settings.modelPath, port: port() });
+    // The desktop app runs only the files picked in its own dialog; the window sends just the port.
+    await tauri.core.invoke("start_ai", { port: port() });
   } catch (err) {
     return showAiHelp(`Couldn't start the AI: ${errorText(err)}`);
   }
@@ -495,8 +499,6 @@ input.addEventListener("keydown", (e) => {
 function saveSettings(): void {
   settings.aiUrl = setAiUrl.value.trim();
   settings.aiModel = setAiModel.value.trim();
-  settings.serverPath = setServer.value.trim();
-  settings.modelPath = setModel.value.trim();
   settings.port = Number(setPort.value);
   settings.port = port();
   save(SETTINGS_KEY, settings);
@@ -508,15 +510,33 @@ function showSettings(): void {
   setAiUrl.placeholder = localUrl();
 }
 
+function showAiFiles(files: AiFiles | null): void {
+  serverFileEl.textContent = files?.server ?? "Not chosen";
+  modelFileEl.textContent = files?.model ?? "Not chosen";
+}
+
+/** Desktop only: the app opens its own file dialog and keeps the file; the window never sends a path. */
+async function pickAiFile(which: "server" | "model"): Promise<void> {
+  const tauri = getTauri();
+  if (!tauri) return;
+  try {
+    showAiFiles((await tauri.core.invoke("pick_ai_file", { which })) as AiFiles);
+  } catch (err) {
+    status(`Couldn't choose the file: ${errorText(err)}`);
+  }
+}
+
+pickServer.addEventListener("click", () => pickAiFile("server"));
+pickModel.addEventListener("click", () => pickAiFile("model"));
+getTauri()?.core.invoke("ai_files").then((files) => showAiFiles(files as AiFiles), () => {});
+
 setAiUrl.value = String(settings.aiUrl || "");
 setAiModel.value = String(settings.aiModel || "");
-setServer.value = settings.serverPath;
-setModel.value = settings.modelPath;
 setPort.value = String(port());
 showSettings();
 aiToggle.checked = Boolean(settings.aiMode);
 document.body.classList.toggle("has-tauri", Boolean(getTauri()));
-for (const el of [setAiUrl, setAiModel, setServer, setModel, setPort]) el.addEventListener("change", saveSettings);
+for (const el of [setAiUrl, setAiModel, setPort]) el.addEventListener("change", saveSettings);
 
 aiToggle.addEventListener("change", () => {
   settings.aiMode = aiToggle.checked;

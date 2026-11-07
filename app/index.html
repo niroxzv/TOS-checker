@@ -38,12 +38,12 @@
           <label class="field">Model name
             <input id="set-ai-model" type="text" spellcheck="false" placeholder="Automatic (prefers Qwen)">
           </label>
-          <label class="field tauri-only">llama-server path
-            <input id="set-server" type="text" placeholder="C:\llama\llama-server.exe">
-          </label>
-          <label class="field tauri-only">Model file (.gguf)
-            <input id="set-model" type="text" placeholder="C:\models\model.gguf">
-          </label>
+          <div class="field tauri-only">llama-server
+            <span class="pick"><code id="server-file">Not chosen</code><button id="pick-server" type="button" aria-label="Choose llama-server">Choose</button></span>
+          </div>
+          <div class="field tauri-only">Model file (.gguf)
+            <span class="pick"><code id="model-file">Not chosen</code><button id="pick-model" type="button" aria-label="Choose the model file">Choose</button></span>
+          </div>
           <label class="field tauri-only">llama-server port
             <input id="set-port" type="number" min="1" max="65535" value="8080">
           </label>
