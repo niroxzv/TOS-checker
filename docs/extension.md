@@ -83,6 +83,8 @@ Both use no dependencies. On Windows, run them from PowerShell or cmd. Edge laun
 3. Clicks the toolbar button with `Extensions.triggerAction` (a real action click, so `activeTab` applies), attaches to the popup and checks the report. Then it clicks **Allow**, **Not OK**, **Show on page** and **Open and show**, selects text, changes the Privacy Policy between visits, and opens a browser page. The site sets a login cookie, so the test can check that linked pages are fetched without it, and the footer links to `router.local`, which must be skipped.
 4. Saves the screenshots in `docs/screenshots/`.
 
+It passes 51 of 51 checks in Edge 157 (7 Nov 2026) and in Chrome for Testing 157.0.8103.38 (8 Nov 2026). The Chrome run used [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/), Google's Chrome build for automated tests. To repeat it, unzip it and set `BROWSER` to its `chrome.exe`.
+
 Options: `BROWSER=<path to msedge.exe or chrome.exe>`, `PROFILE_DIR=<folder>` to use a profile folder of your own (kept afterwards; never point it at your real browser profile), `HEADED=1` to watch, `NO_SHOTS=1` to skip screenshots. It exits with code 1 if any check fails.
 
 **`scripts/test-firefox.ts` (Firefox)**:
@@ -128,7 +130,7 @@ Not verified, and why:
 - **Firefox through a real mouse click.** The Firefox test calls what the click runs, not the click itself, and reads the popup through a frame script. Loading it by hand from about:debugging is the last check.
 - **Publishing.** AMO's own validator hasn't seen the zip. It runs when you upload.
 - **The popup's own window size.** Headless Edge keeps the popup at the height of its first "Reading…" frame, where a real popup grows to fit, up to 600px. So the screenshots draw the popup's live DOM in `popup.html` opened as a tab (same CSS and fonts) at 380 × 600, or at full length for `extension-popup-full.png`.
-- Chrome (none on the test PC), dark mode, terms inside iframes, and a page long enough to hit the 500,000-character cap.
+- Dark mode, terms inside iframes, and a page long enough to hit the 500,000-character cap.
 
 Screenshots: `extension-popup.png` (what you see on clicking), `extension-popup-full.png` (the whole report), `extension-popup-permission.png` (before Allow), `extension-popup-selection.png`, `extension-popup-dealbreaker.png`, `extension-popup-changed.png` (after the Privacy Policy changed), `extension-show-on-page.png` (the highlighted sentence), and `extension-in-context.png` (popup over the page).
 
