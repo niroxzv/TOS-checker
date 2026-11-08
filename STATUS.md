@@ -11,7 +11,7 @@
 - [x] Small trained model (`src/model.ts`): logistic regression over words, word pairs and which rules fired. It confirms or adds the 8 benchmark clause types, about 600 KB, and runs on the device. Retrain with `npm run train`.
 - [x] Disguised text doesn't hide a clause: hidden characters (soft hyphens, zero-width spaces), full-width letters and Latin words spelt with look-alike Cyrillic or Greek letters are read as plain text. Flags still quote the original.
 - [x] No slow patterns: 200 KB of hostile text (like "a.b.a.b." or thousands of blank lines) is checked in about 0.1 s. Before 7 Nov 2026 it took tens of seconds.
-- [x] All tests pass with `npm test` (240).
+- [x] All tests pass with `npm test` (243).
 
 ### Web app (`app/`)
 - [x] Paste the terms, open a file, or try a sample, then press Check (or Ctrl+Enter).
