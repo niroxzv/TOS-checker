@@ -16,7 +16,7 @@
 ### Web app (`app/`)
 - [x] Paste the terms, open a file, or try a sample, then press Check (or Ctrl+Enter).
 - [x] Tickwise look: ivory paper, Redaction serif, uppercase mono labels, a dark score band with a verdict pill and a High / Med / Low tally, coral severity pills. Fonts are bundled, so nothing loads from the internet.
-- [x] Each flag shows what it means, the exact quote, a safeguard to add (once per kind of flag), and Approve / Not OK buttons. Your choices are saved and the score updates.
+- [x] Each flag shows what it means, the exact quote, a safeguard to add (once per kind of flag), and OK / Not OK buttons. Your choices are saved and the score updates.
 - [x] Click a flag to jump to the highlighted sentence in the document.
 - [x] Tested in the browser with the sample: renders, no console errors.
 

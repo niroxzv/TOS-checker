@@ -45,7 +45,7 @@ export const RULES: Rule[] = [
     id: "collects_contacts",
     category: "data-collection",
     severity: "medium",
-    say: "They collect your contacts (your address book).",
+    say: "They collect your contacts.",
     match: [/\b(collect|access|upload|import|sync)\w*\b[^.]{0,60}\b(contacts|address book|contact list|phone ?book)\b/i,
       /\b(contacts|address book|contact list)\b[^.]{0,20}\b(uploaded|synced|imported|collected|accessed)\b/i],
     unless: [denies("collect|access|upload|import|sync"), FOR_YOU, DONT_LIST_ITEM],
@@ -54,7 +54,7 @@ export const RULES: Rule[] = [
     id: "collects_biometrics",
     category: "data-collection",
     severity: "high",
-    say: "They collect biometric data, such as your face or voice.",
+    say: "They collect biometric data, like your face or voice.",
     // A biometric word and something done with it. A bare mention ("never upload biometric data") isn't enough.
     match: [all(BIOMETRIC, String.raw`\b(?:(?:collect|process|captur|receiv|obtain|access|extract|analy[sz]|generat|deriv|retain|disclos)\w*|use[sd]?|using|stor(?:e|es|ed|ing)|keeps?|kept|shar(?:e|es|ed|ing)|sells?|sold)\b`)],
     unless: [denies("collect|use|store|process|capture|receive|extract|mine"), FOR_YOU, DONT_LIST_ITEM,
@@ -65,7 +65,7 @@ export const RULES: Rule[] = [
     id: "tracks_across_sites",
     category: "data-collection",
     severity: "medium",
-    say: "They track what you do on other websites or apps, usually for ads.",
+    say: "They track you on other sites and apps.",
     match: [
       // Not "across your devices": that's their own app on your phone and laptop, not other sites.
       /\b(track|collect|monitor|follow)\w*\b[^.]{0,80}\b(across|on other)\b[^.]{0,40}\b(websites|sites|apps|applications|services)\b/i,
@@ -107,7 +107,7 @@ export const RULES: Rule[] = [
     id: "shares_data",
     category: "data-sharing",
     severity: "medium",
-    say: "They share your data with other companies (partners, advertisers or 'third parties').",
+    say: "They share your data with other companies.",
     // Needs all three in one clause: a sharing verb, an outside company, and data.
     match: [
       /^(?=.*\b(share[sd]?|sharing|disclose[sd]?|disclosing|transfer(s|red)?)\b)(?=.*\b(third[- ]part(y|ies)|advertisers|partners|affiliates|data brokers|new owners?|successors?)\b)(?=.*\b(data|information)\b)/is,
@@ -124,7 +124,7 @@ export const RULES: Rule[] = [
     id: "broad_content_license",
     category: "your-content",
     severity: "high",
-    say: "You give them a broad license to use what you upload (worldwide, free, often forever).",
+    say: "They can use what you upload, for free, often forever.",
     // "you (hereby) grant ..." + a broad-license word + "license". Ignores the license *they* give *you*.
     match: [
       /^(?=.*\byou(\s+(?!we\b)\w+){0,3}\s+(grant\w*|give)\b)(?=.*\b(perpetual|irrevocable|worldwide|world-wide|royalty[- ]free|sublicensable)\b)(?=.*\b(licen[cs]e|right)s?\b)/is,
@@ -188,7 +188,7 @@ export const RULES: Rule[] = [
     category: "your-rights",
     severity: "high",
     unfairTos: "Arbitration",
-    say: "Disputes go to private arbitration instead of a normal court.",
+    say: "Disputes go to private arbitration, not court.",
     // Flags the sentence that sends disputes to arbitration, not every sentence of the arbitration section
     // (who picks the arbitrator, the fees, the location...). One clear flag is more useful than thirty.
     match: [
@@ -218,7 +218,7 @@ export const RULES: Rule[] = [
     id: "class_action_waiver",
     category: "your-rights",
     severity: "high",
-    say: "You give up the right to a jury trial or to join a class action (group lawsuit).",
+    say: "You give up jury trials and group lawsuits.",
     match: [
       /(?<!-)\b(class|collective|representative)[- ](action|arbitration|proceeding|lawsuit|claim)s?\b/i,
       /\bclass[- ]wide\b/i,
@@ -230,7 +230,7 @@ export const RULES: Rule[] = [
     category: "your-rights",
     severity: "medium",
     unfairTos: "Unilateral change",
-    say: "They can change these terms (or prices) whenever they want.",
+    say: "They can change the terms or prices anytime.",
     match: [
       all(THEY_MAY, near("chang|modif|amend|updat|revis|increas|rais|add(?:s|ed)?\\b|alter|improve|enhance",
         "terms|agreement|agreements|polic(?:y|ies)|prices?|pricing|fees?|charges|rates|services?|platform|features?|functionality|warnings|products?|rules|eula|subscriptions?|virtual (?:goods|items|money|currency)|payment methods|practices|trial", 60)),
@@ -255,7 +255,7 @@ export const RULES: Rule[] = [
     category: "your-rights",
     severity: "medium",
     unfairTos: "Unilateral termination",
-    say: "They can suspend or close your account at any time, maybe without a reason.",
+    say: "They can close your account at any time.",
     match: [
       all(THEY_MAY, near("suspend|terminat|disabl|deactivat|clos|cancel(?!lation)|ban(?!ner)|revok|restrict(?= (?:your )?(?:access|use))|deny|limit(?= (?:your )?(?:access|use))|discontinu|stop offering",
         "accounts?|access|agreement|licen[cs]e|subscriptions?|membership|privileges|right to use|use of|ability to (?:access|use)|service|services|relationship")),
@@ -284,7 +284,7 @@ export const RULES: Rule[] = [
     category: "your-rights",
     severity: "medium",
     unfairTos: "Contract by using",
-    say: "Just using the service counts as agreeing to these terms.",
+    say: "Just using it counts as agreeing.",
     match: [
       /\bby (\w+ing\s+(\w+\s+){0,2}or\s+)?(accessing|using|visiting|browsing|downloading|installing|continuing to use)\b[^.]{0,80}\b(agree|accept|consent)\w*\s+(to\s+)?(comply|be bound|these|this|the|our)\b/i,
       /\b(continue|keep) (to use|using)\b[^.]{0,60}\b(agree|accept|consent)/i,
@@ -310,7 +310,7 @@ export const RULES: Rule[] = [
     category: "your-rights",
     severity: "medium",
     unfairTos: "Limitation of liability",
-    say: "They limit what they owe you if something goes wrong.",
+    say: "They limit what they owe you if things go wrong.",
     match: [
       /\b(not|never)\s+(be\s+)?(held\s+)?(responsible\s+(or|and|nor)\s+)?liable\b/i,
       // "Not responsible" alone is often just "third-party sites aren't ours". Count it when a loss is named.
@@ -360,7 +360,7 @@ export const RULES: Rule[] = [
     category: "your-rights",
     severity: "low",
     unfairTos: "Choice of law",
-    say: "Another country's or state's law applies, which may not be yours.",
+    say: "Another place's law applies, maybe not yours.",
     match: [
       // Not "governing law" or "under the laws of" alone: those are mostly headings and "a company incorporated under the laws of...".
       /\bgoverned\b[^.]{0,40}\blaws?\b/i,
@@ -382,7 +382,7 @@ export const RULES: Rule[] = [
     category: "your-rights",
     severity: "low",
     unfairTos: "Jurisdiction",
-    say: "Any lawsuit has to happen in courts they picked, possibly far from you.",
+    say: "Lawsuits go to courts they chose, maybe far away.",
     match: [
       /\b(exclusive|sole)\s+(jurisdiction|venue)\b/i,
       /\bjurisdiction of the\b[^.]{0,20}\bcourts?\b/i,
@@ -433,7 +433,7 @@ export const RULES: Rule[] = [
     id: "arbitration_opt_out",
     category: "action",
     severity: "info",
-    say: "You can opt out of arbitration. Check the deadline and how to do it.",
+    say: "You can opt out of arbitration, before a deadline.",
     match: [
       /\bopt[- ]out\b[^.]{0,60}\barbitration\b/i,
       /\barbitration\b[^.]{0,80}\bopt[- ]out\b/i,

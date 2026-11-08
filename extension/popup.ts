@@ -58,7 +58,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
   money: "Money",
   action: "You can act",
 };
-const QUOTE_MAX = 200;
+const QUOTE_MAX = 140;
 const SELECTION_MIN = 200;
 /** Characters checked per document. Long terms run to about 300,000; this keeps a huge page from stalling the popup. */
 const MAX_TEXT = 500_000;
@@ -474,7 +474,7 @@ function card(hit: Hit, advice: string | null): HTMLElement {
   const actions = el(
     "div",
     { className: "actions" },
-    toggle("Approve", "choice-ok", pref === "ok", () => setPref(flag.ruleId, "ok")),
+    toggle("OK", "choice-ok", pref === "ok", () => setPref(flag.ruleId, "ok")),
     toggle("Not OK", "choice-notok", pref === "notok", () => setPref(flag.ruleId, "notok")),
   );
   const show = showButton(flag, doc);

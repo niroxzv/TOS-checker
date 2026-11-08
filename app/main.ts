@@ -227,10 +227,13 @@ function renderCards(): void {
   }
 }
 
+const QUOTE_MAX = 160;
+
 function renderCard(item: Item): HTMLElement {
   const choice = item.ruleId ? prefs[item.ruleId] : undefined;
   let cls = `card sev-${item.severity}`;
   if (choice === "notok") cls += " is-dealbreaker";
+  if (choice === "ok") cls += " is-ok";
   if (item.ai) cls += " is-ai";
   const card = h("article", cls);
   card.id = `card-${item.key}`;
@@ -241,7 +244,10 @@ function renderCard(item: Item): HTMLElement {
   tags.append(h("span", "pill-sev", SEVERITY_LABEL[item.severity]), h("span", "chip", CATEGORY_LABEL[item.category] ?? item.category));
   if (choice === "notok") tags.append(h("span", "badge badge-deal", "Dealbreaker"));
   if (item.ai) tags.append(h("span", "badge badge-ai", "AI · quote checked"));
-  card.append(tags, h("p", "say", item.say), h("blockquote", "quote", item.quote));
+  // Long quotes are cut to keep cards short; the full sentence is in the document panel and on hover.
+  const quote = h("blockquote", "quote", item.quote.length > QUOTE_MAX ? `${item.quote.slice(0, QUOTE_MAX).trimEnd()}…` : item.quote);
+  if (item.quote.length > QUOTE_MAX) quote.title = item.quote;
+  card.append(tags, h("p", "say", item.say), quote);
 
   // Next move: a safeguard to add, on the first card of its kind only.
   if (advisedKeys.has(item.key)) {
@@ -253,7 +259,7 @@ function renderCard(item: Item): HTMLElement {
   const ruleId = item.ruleId;
   if (ruleId) {
     const actions = h("div", "actions");
-    const options: [Choice, string][] = [["ok", "Approve"], ["notok", "Not OK"]];
+    const options: [Choice, string][] = [["ok", "OK"], ["notok", "Not OK"]];
     for (const [value, label] of options) {
       const btn = button(label, `choice choice-${value}`, () => setPref(ruleId, value, item.key));
       btn.setAttribute("aria-pressed", String(choice === value));

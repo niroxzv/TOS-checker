@@ -517,7 +517,7 @@ async function run(port: number, signupUrl: string, setPrivacy: (version: number
   const adds = r.cards.filter((c: any) => c.advice).map((c: any) => c.addText);
   check("a flag has at most one Add", r.cards.every((c: any) => c.advice === "" || c.advice === "Add"));
   check("each Add shows once, on the first card of its kind", adds.length > 0 && new Set(adds).size === adds.length, `${adds.length} Adds on ${r.cards.length} cards`);
-  check("every flag has Approve / Not OK", r.cards.every((c: any) => c.buttons === "Approve/Not OK"));
+  check("every flag has OK / Not OK", r.cards.every((c: any) => c.buttons === "OK/Not OK"));
   check("cross-origin Cookie Policy is listed as unread", r.failed.join() === "Cookie Policy", r.failed.join());
   check("'Allow reading 1 more page' button is shown", r.allow.includes("Allow reading 1 more page"), r.allow.join());
   check("non-legal links are not fetched", !served.some((s) => s.path === "/help" || s.path === "/features"));
