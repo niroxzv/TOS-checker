@@ -120,7 +120,12 @@ export const RULES: Rule[] = [
       /\b(AI|artificial intelligence|machine[- ]learning|models?|LLMs?)\b[^.]{0,20}\btrain(s|ed|ing)?\b/i,
       /\b(develop|improve)\b[^.]{0,40}\b(AI|artificial intelligence|machine[- ]learning)\b/i,
     ],
-    unless: [/(?:\bnot|\bnever|n't)\b[^.,]{0,30}\b(use|train)\w*\b[^.]{0,40}\b(your|customer|user|AI|models?)\b/i],
+    unless: [
+      /(?:\bnot|\bnever|n't)\b[^.,]{0,30}\b(use|train)\w*\b[^.]{0,40}\b(your|customer|user|AI|models?)\b/i,
+      // A rule for you, not them: don't use the service or what it generates to build a competing AI
+      // (distillation). Often an item in a "you must not" list, so the clause itself has no "not".
+      /\b(compet(e|es|ing|itive|itors?)|distill\w*|reverse[- ]engineer\w*)\b/i,
+    ],
   },
   {
     id: "content_removal",

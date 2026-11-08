@@ -82,6 +82,7 @@
   - Arbitration now skips class-arbitration waivers, "not combine" clauses, the Federal Arbitration Act line, and court clauses that only point to the arbitration section.
   - Unilateral termination now also catches "may stop providing the service", "grounds for termination", "has discretion to terminate", "terminates automatically if you…", "withdraw access" and "may suspend users".
   - Most arbitration flags still counted wrong are real arbitration sentences. UNFAIR-ToS marks only one sentence per arbitration section as unfair, so "disputes must be resolved by binding arbitration" in a summary notice counts as a mistake. Removing those would hide true clauses, so they stay.
+- 8 Nov 2026: "They may use your content or data to train AI" no longer fires on rules for you, such as "don't use the service or what it generates to build a competing AI" (distillation) in a "you must not" list. Found on Qwen's terms. The test scores didn't change.
 - Bigger variants (character n-grams, larger vocabularies) did not beat this model in cross-validation: all scored within 0.5 points. Plain-text models top out around here. The next real gain needs a transformer or the local LLM (see AI mode).
 
 ## To do
