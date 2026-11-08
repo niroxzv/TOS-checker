@@ -112,7 +112,8 @@ export const RULES: Rule[] = [
     match: [
       /^(?=.*\b(share[sd]?|sharing|disclose[sd]?|disclosing|transfer(s|red)?)\b)(?=.*\b(third[- ]part(y|ies)|advertisers|partners|affiliates|data brokers|new owners?|successors?)\b)(?=.*\b(data|information)\b)/is,
     ],
-    unless: [denies("share|disclose|transfer"), /\bno third[- ]part(y|ies)\b/i, FOR_YOU,
+    unless: [/\bliable for the transfer\b/i, /\b(legally valid request|law enforcement|public authorities)\b/i,
+      denies("share|disclose|transfer"), /\bno third[- ]part(y|ies)\b/i, FOR_YOU,
       // Others sharing with them ("authorize third-party services to share data with us") is the other way round.
       /\bshar\w*\s+(?:[\w,'-]+\s+){0,6}?with\s+us\b/i,
       // "Confidential Information" clauses are about their secrets you must keep, not your data.
@@ -178,7 +179,8 @@ export const RULES: Rule[] = [
       /\blose\b[^.]{0,60}\b(user ?names?|content|items)\b/i,
       /\b(disabling|terminat\w*)\b[^.]{0,40}\baccess\b[^.]{0,60}\bcontent\b/i,
     ],
-    unless: [denies("remov|delet|take down|disabl|block|edit"), /\b(if|when|once) you (delete|close|deactivate)\w* your account\b/i,
+    unless: [/\bexclude or limit\b/i, /\bfailure to delete\b/i, /\blicen[cs]es? granted by you\b/i, /\b(modify|amend|update) (this|these) (agreement|terms)\b/i, /\byou may not do\b/i,
+      denies("remov|delet|take down|disabl|block|edit"), /\b(if|when|once) you (delete|close|deactivate)\w* your account\b/i,
       /\b(dmca|notice of (claimed )?infringement)\b/i, /\bif your subscription\b/i],
   },
 
@@ -224,6 +226,7 @@ export const RULES: Rule[] = [
       /\bclass[- ]wide\b/i,
       /\b(jury trial|trial by jury|by a jury)\b/i,
     ],
+    unless: [/\bclass[- ]wide settlement\b/i],
   },
   {
     id: "unilateral_change",
@@ -245,7 +248,8 @@ export const RULES: Rule[] = [
       /\b(we|\w+) may\b[^.]{0,30}\bmake changes to\b/i,
       /\bbound by\b[^.]{0,20}\b(amended|revised|updated|modified|changed)\s+(terms|agreement|version)\b/i,
     ],
-    unless: [denies("chang|modif|amend|updat|revis|increas|rais"), /\b(last|recently) (updated|revised|modified|changed|amended)\b/i,
+    unless: [/\binterrupted from time to time\b/i,
+      denies("chang|modif|amend|updat|revis|increas|rais"), /\b(last|recently) (updated|revised|modified|changed|amended)\b/i,
       /\b(notices?|inform\w*|notify\w*)\s+(you\s+)?(with\s+)?(notices?\s+)?(of|regarding|about|including those regarding)\s+(material\s+)?(the\s+)?changes\b/i,
       /\b(vacate|confirm)\b[^.]{0,20}\baward\b/i,
       /\b(correct|error)\b[^.]{0,40}\border\b/i, /\bdelete or change any account name\b/i],
@@ -275,7 +279,8 @@ export const RULES: Rule[] = [
     ],
     // "You may terminate your account" is your right, not theirs.
     // Known gap: a clause giving both sides that right is skipped too.
-    unless: [new RegExp(String.raw`^(?!.*${THEY_MAY}).*\byou\s+((may|can|have the ability to)\s+)?(terminat|cancel|clos|delet|disabl)\w*`, "is"),
+    unless: [/^\s*your right to terminate\b/i, /\bfailure to provide\b[^.]{0,60}\binformation\b/i,
+      new RegExp(String.raw`^(?!.*${THEY_MAY}).*\byou\s+((may|can|have the ability to)\s+)?(terminat|cancel|clos|delet|disabl)\w*`, "is"),
       /\bwhile we address\b/i, /\b(dmca|notice of (claimed )?infringement)\b/i, /\bunder 13\b/i,
       /\b(maintenance|repair)\b/i, /\bright to cancel\b[^.]{0,40}\bwithin\b/i, /\bautomatically terminate at the end\b/i],
   },
@@ -348,7 +353,8 @@ export const RULES: Rule[] = [
     ],
     // UNFAIR-ToS counts "we're not responsible for third-party sites / other users' content" as fair,
     // and so do we: that's a statement of fact, not a cap on what they owe you.
-    unless: [/\byou\s+(are|will|shall)\s+not\s+(be\s+)?(held\s+)?(liable|responsible)\b/i,
+    unless: [/\b(do|does|shall|will) not (exclude or )?limit\b[^.]{0,40}\bliability\b/i, /\bproduct liability claims\b/i,
+      /\byou\s+(are|will|shall)\s+not\s+(be\s+)?(held\s+)?(liable|responsible)\b/i,
       /^(?!.*\b(liable|liability|damages|loss|injury|limited|consequential)\b).*\bnot\s+(be\s+)?(held\s+)?responsible\b[^.]{0,80}\b(third[- ]part(y|ies)|other users|any user|websites?|content (of|accessed)|accuracy|availability|privacy practices|user material|user-generated)\b/is,
       /\b(some|certain) (\w+\s+)?(jurisdictions|states|places|countries)\b[^.]{0,30}\bdo not allow\b/i, /\bsurvive\b/i, /\ballocation of risk\b/i,
       /\bnothing in\b[^.]{0,60}\b(limits?|exclud\w*|removes?)\b/i, /\bwithout (any )?admission as to liability\b/i,
@@ -369,13 +375,14 @@ export const RULES: Rule[] = [
       /\blaws? of\b(?:[^.]|\.(?=\S)){0,80}\b(shall|will) (govern|apply)\b/i,
       /\blaws? of\b[^.]{0,80}\bgovern\w*\b/i,
       /\b(interpreted|construed)\b[^.]{0,30}\b(in accordance with|under)\b[^.]{0,60}\blaws?\b/i,
-      /\bsubject to\s+(the\s+)?\w+(\s+\w+)? law\b/i,
+      /\bsubject to\s+(the\s+)?(?!applicable\b)\w+(\s+\w+)? law\b/i,
       /\bsubject to the laws? of\b/i,
       /\bconflicts? of laws?\b/i,
       /\bapplicable law and venue\b/i,
     ],
     // The law of the place where you live is no surprise.
-    unless: [/\blaws?\s+(of|in|applicable in)\s+(the\s+(state|country|province)(\s+or\s+(state|country|province))?\s+(where|in which)\s+you\s+(live|reside)|your\s+(state|country|province))\b/i],
+    unless: [/\blegally valid request\b/i,
+      /\blaws?\s+(of|in|applicable in)\s+(the\s+(state|country|province)(\s+or\s+(state|country|province))?\s+(where|in which)\s+you\s+(live|reside)|your\s+(state|country|province))\b/i],
   },
   {
     id: "jurisdiction",
@@ -395,7 +402,8 @@ export const RULES: Rule[] = [
       /\bconsent to (the )?(exclusive )?(venue|personal jurisdiction|jurisdiction)\b/i,
       /\bjurisdiction\b[^.]{0,60}\blocated in\b/i,
     ],
-    unless: [/\bcourts? (of|in) (your|the country where you)\b/i],
+    unless: [/\binstead of\b[^.]{0,30}\bcourts?\b/i,
+      /\bcourts? (of|in) (your|the country where you)\b/i],
   },
 
   // ── Money ─────────────────────────────────────────────────────────
@@ -426,6 +434,7 @@ export const RULES: Rule[] = [
       /(\bnot|cannot) (be )?refund(able|ed)\b/i,
       /(\bnot|\bnever|n't)\s+(offer|give|provide|issue)\s+(any\s+)?refunds?\b/i,
     ],
+    unless: [/\b(filing|administrative|arbitration)\b[^.]{0,20}\bfees?\b/i],
   },
 
   // ── Things you can do about it ────────────────────────────────────
