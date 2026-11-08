@@ -69,7 +69,6 @@ h2 { font: 600 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .1
 /* Each flag is an oat card. Severity is a pill: high = coral fill, medium = coral outline, low/info = grey outline. */
 .flags h2 { margin-bottom: 10px; }
 .card { margin-bottom: 10px; padding: 14px; border-radius: 12px; background: var(--card); }
-.card.is-ok { opacity: .55; }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-bottom: 8px;
   font: 500 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .pill-sev, .badge { padding: 4px 8px; border-radius: 999px; font-weight: 600; }
@@ -95,7 +94,8 @@ button:hover { background: var(--paper); }
 button:disabled { opacity: .5; cursor: default; }
 button.primary { margin: 8px 0; background: var(--fg); color: var(--bg); }
 button.primary:hover { opacity: .88; }
-.choice-ok[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.choice-ok[aria-pressed="true"] { background: var(--lime); color: #141413; }
+.choice-ok[aria-pressed="true"]::before { content: "\2713\00A0"; }
 /* Goes to the sentence: set apart from the two choices, and quieter. */
 button.show { margin-left: auto; border-color: var(--rule); }
 button.show:hover { border-color: var(--fg); }

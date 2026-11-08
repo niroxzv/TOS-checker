@@ -233,7 +233,6 @@ function renderCard(item: Item): HTMLElement {
   const choice = item.ruleId ? prefs[item.ruleId] : undefined;
   let cls = `card sev-${item.severity}`;
   if (choice === "notok") cls += " is-dealbreaker";
-  if (choice === "ok") cls += " is-ok";
   if (item.ai) cls += " is-ai";
   const card = h("article", cls);
   card.id = `card-${item.key}`;

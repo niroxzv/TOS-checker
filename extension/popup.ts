@@ -455,7 +455,6 @@ function card(hit: Hit, advice: string | null): HTMLElement {
   const pref = prefs[flag.ruleId];
   let className = `card sev-${flag.severity}`;
   if (pref === "notok") className += " is-dealbreaker";
-  if (pref === "ok") className += " is-ok";
 
   const meta = el(
     "div",

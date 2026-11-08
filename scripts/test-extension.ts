@@ -580,6 +580,16 @@ async function run(port: number, signupUrl: string, setPrivacy: (version: number
   await click(b.sessionId, ".card:first-of-type button", "Not OK");
   r = await readReport(b.sessionId);
   check("clicking Not OK again clears it", !r.cards.some((x: any) => x.dealbreaker) && r.score === scoreBefore, `${r.score}`);
+
+  // OK marks the button (tick, lime) and leaves the card readable: no fade.
+  await click(b.sessionId, ".card:first-of-type button", "OK");
+  const okState = await evaluate(b.sessionId, `(() => {
+    const c = document.querySelector(".card"), btn = c.querySelector(".choice-ok");
+    return { pressed: btn.getAttribute("aria-pressed"), opacity: getComputedStyle(c).opacity, tick: getComputedStyle(btn, "::before").content };
+  })()`);
+  check("OK is pressed without fading the card", okState.pressed === "true" && okState.opacity === "1" && okState.tick.includes("✓"), JSON.stringify(okState));
+  if (process.env.OK_SHOT) await snapshot(b.sessionId, "extension-popup-ok.png");
+  await click(b.sessionId, ".card:first-of-type button", "OK");
   check("reopen: each document says there's no change", r.docs.every((x: any) => x.watch === "No change since you checked today"), r.docs.map((x: any) => x.watch).join(" | "));
 
   // Show on page: highlights the sentence in the tab and scrolls it into view, here inside the scrolling terms box.
