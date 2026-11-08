@@ -1,6 +1,7 @@
 import type { Category } from "./types.ts";
 
-// One next move for every flag, shown as "Add": a safeguard you can put in place. Each line is different, so
+// One next move for every flag, shown as "Add": a safeguard you can put in place, after the Add step of the
+// Add / Check / Tell habit in the Digital4Good "Spot It! Stop It!" field guide. Each line is different, so
 // two flags never repeat the same advice (test/advice-score.test.ts checks that).
 const BY_RULE: Record<string, string> = {
   collects_location: "Set the app's location access to \"While using\" or \"Never\", and turn off precise location.",
