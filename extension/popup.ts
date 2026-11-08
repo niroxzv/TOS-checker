@@ -2,6 +2,7 @@ import { analyze } from "../src/engine.ts";
 import { boundaryScore } from "../src/score.ts";
 import { adviceFor } from "../src/advice.ts";
 import { clipAround } from "../src/clip.ts";
+import { kindOf, kindSay, rulesOfKind } from "../src/kinds.ts";
 import type { Category, Flag, Severity } from "../src/types.ts";
 import { badgeFor, compareSeen, flagKey, normalize, originPatterns, plural, pruneSeen, seenKey, textFragmentUrl, watchLine, type Seen } from "./lib.ts";
 
@@ -327,8 +328,11 @@ async function saveSeen(): Promise<void> {
 
 /** Clicking the pressed button again clears the pref. */
 async function setPref(ruleId: string, value: Pref): Promise<void> {
-  if (prefs[ruleId] === value) delete prefs[ruleId];
-  else prefs[ruleId] = value;
+  const clear = prefs[ruleId] === value;
+  for (const id of rulesOfKind(ruleId)) {
+    if (clear) delete prefs[id];
+    else prefs[id] = value;
+  }
   render();
   try {
     await ext.storage.local.set({ [PREFS_KEY]: prefs });
@@ -357,8 +361,20 @@ function mergedHits(): Hit[] {
 /** Flags grouped by rule, in report order: one group per kind of point. */
 function kindsOf(hits: Hit[]): Hit[][] {
   const kinds = new Map<string, Hit[]>();
-  for (const hit of hits) kinds.set(hit.flag.ruleId, [...(kinds.get(hit.flag.ruleId) ?? []), hit]);
+  for (const hit of hits) {
+    const kind = kindOf(hit.flag.ruleId);
+    const group = kinds.get(kind) ?? [];
+    // Two rules on one card often quote the same sentence: show it once.
+    if (!group.some((h) => normalize(h.flag.quote) === normalize(hit.flag.quote))) group.push(hit);
+    kinds.set(kind, group);
+  }
   return [...kinds.values()];
+}
+
+/** The rules that fired for this card's kind, on any document. */
+function ruleIdsOf(ruleId: string): string[] {
+  const kind = kindOf(ruleId);
+  return [...new Set(docs.flatMap((d) => d.flags.map((f) => f.ruleId)).filter((id) => kindOf(id) === kind))];
 }
 
 /** Shown straight away: high risks and your dealbreakers. */
@@ -384,7 +400,7 @@ function render(): void {
   }
 
   const hits = mergedHits();
-  setBadge(hits.filter((h) => h.flag.severity === "high").length);
+  setBadge(kindsOf(hits).flat().filter((h) => h.flag.severity === "high").length);
   main.append(scoreBlock(hits));
   // Straight under the score, not after every card, so the button is seen without scrolling.
   if (failed.length > 0) main.append(failedBlock());
@@ -396,7 +412,8 @@ function render(): void {
   const big = kinds.filter(isBig);
   const small = kinds.filter((k) => !isBig(k));
   const kindBlock = ([first, ...rest]: Hit[]): HTMLElement[] => {
-    const out: HTMLElement[] = [card(first, adviceFor(first.flag.ruleId, first.flag.category))];
+    const say = kindSay(ruleIdsOf(first.flag.ruleId), first.flag.say);
+    const out: HTMLElement[] = [card(first, adviceFor(kindOf(first.flag.ruleId), first.flag.category), say)];
     if (rest.length === 0) return out;
     const more = el("details", { className: "more" }, el("summary", { text: `${rest.length} more ${rest.length === 1 ? "place" : "places"} it says this` }), ...rest.map((h) => card(h, null)));
     if (rest.some(isNew)) more.open = true;
@@ -441,7 +458,7 @@ function scoreBlock(hits: Hit[]): HTMLElement {
   const kinds = kindsOf(hits);
   const big = kinds.filter(isBig).length;
   const line = el("p", { className: "line", text: hits.length === 0 ? "Nothing flagged." : big ? `${big} big ${big === 1 ? "thing" : "things"} to know before you tick, and ${kinds.length - big} smaller.` : `${plural(kinds.length, "thing")} to know before you tick, none of them high risk.` });
-  const deals = new Set(hits.filter((h) => prefs[h.flag.ruleId] === "notok").map((h) => h.flag.ruleId)).size;
+  const deals = new Set(hits.filter((h) => prefs[h.flag.ruleId] === "notok").map((h) => kindOf(h.flag.ruleId))).size;
   if (deals > 0) line.append(` ${deals} of your dealbreaker${deals === 1 ? " is" : "s are"} in here.`);
   const fresh = hits.filter(isNew).length;
   if (fresh > 0) line.append(` ${fresh} ${fresh === 1 ? "is" : "are"} new since you last checked.`);
@@ -481,7 +498,7 @@ function docList(): HTMLElement {
   return box;
 }
 
-function card(hit: Hit, advice: string | null): HTMLElement {
+function card(hit: Hit, advice: string | null, say = hit.flag.say): HTMLElement {
   const { flag, doc } = hit;
   const pref = prefs[flag.ruleId];
   let className = `card sev-${flag.severity}`;
@@ -514,7 +531,7 @@ function card(hit: Hit, advice: string | null): HTMLElement {
     "article",
     { className },
     meta,
-    el("p", { className: "say", text: flag.say }),
+    el("p", { className: "say", text: say }),
     quote,
     el("p", { className: "source", text: `From: ${doc.name}` }),
     ...(advice ? [el("dl", { className: "advice" }, el("dt", { text: "Add" }), el("dd", { text: advice }))] : []),

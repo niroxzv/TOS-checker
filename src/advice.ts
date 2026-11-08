@@ -14,7 +14,7 @@ const BY_RULE: Record<string, string> = {
   broad_content_license: "Don't post work you want to control.",
   ai_training: "Turn off \"improve the model\" and keep secrets out.",
   content_removal: "Read the community rules first.",
-  arbitration: "Look for an opt-out or small-claims option.",
+  arbitration: "Look for an opt-out. CASE, Singapore's consumer body, can still help.",
   class_action_waiver: "You can still complain to CASE, Singapore's consumer body.",
   unilateral_change: "Keep email alerts on for term changes.",
   unilateral_termination: "Back up your photos, chats and saves.",

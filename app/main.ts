@@ -1,5 +1,6 @@
 import { adviceFor } from "../src/advice.ts";
 import { clipAround } from "../src/clip.ts";
+import { kindOf, kindSay, rulesOfKind } from "../src/kinds.ts";
 import { analyze } from "../src/engine.ts";
 import { boundaryScore } from "../src/score.ts";
 import type { Category, Flag, Severity } from "../src/types.ts";
@@ -138,6 +139,11 @@ function status(text: string): void {
   statusEl.textContent = text;
 }
 
+/** The card an item goes on: its rule's kind, or its own for an AI point. */
+function kindKey(item: Item): string {
+  return item.ruleId ? kindOf(item.ruleId) : `ai:${item.key}`;
+}
+
 function isDealbreaker(item: Item): boolean {
   return item.ruleId !== null && prefs[item.ruleId] === "notok";
 }
@@ -187,10 +193,10 @@ function renderSummary(): void {
   summaryEl.className = `hero band-${label === "Low risk" ? "ok" : label === "Think twice" ? "warn" : "bad"}`;
   const num = h("p", "num", String(score));
   num.append(h("small", "", "/ 100"));
-  const deals = new Set(items.filter(isDealbreaker).map((i) => i.ruleId)).size;
+  const deals = new Set(items.filter(isDealbreaker).map(kindKey)).size;
   const line = h("p", "line");
-  const kinds = new Set(items.map((i) => i.ruleId ?? `ai:${i.key}`)).size;
-  const big = new Set(items.filter((i) => i.severity === "high").map((i) => i.ruleId ?? `ai:${i.key}`)).size;
+  const kinds = new Set(items.map(kindKey)).size;
+  const big = new Set(items.filter((i) => i.severity === "high").map(kindKey)).size;
   line.append(big ? `${big} big ${big === 1 ? "thing" : "things"} to know before you tick, and ${kinds - big} smaller.` : `${kinds} ${kinds === 1 ? "thing" : "things"} to know before you tick, none of them high risk.`);
   if (deals) line.append(` ${deals} of your dealbreaker${deals === 1 ? " is" : "s are"} in here.`);
   const k = h("p", "k", "Boundary score");
@@ -198,7 +204,7 @@ function renderSummary(): void {
   const tally = h("div", "tally");
   for (const [sev, name] of [["high", "High"], ["medium", "Med"], ["low", "Low"]] as const) {
     const cell = h("div");
-    cell.append(h("b", "", String(new Set(items.filter((i) => i.severity === sev).map((i) => i.ruleId ?? `ai:${i.key}`)).size)), h("span", "", name));
+    cell.append(h("b", "", String(new Set(items.filter((i) => i.severity === sev).map(kindKey)).size)), h("span", "", name));
     tally.append(cell);
   }
   summaryEl.append(k, num, line, tally);
@@ -221,15 +227,18 @@ function renderCards(): void {
       .sort((a, b) => Number(isDealbreaker(b)) - Number(isDealbreaker(a)) || a.start - b.start || Number(a.ai) - Number(b.ai));
     if (!group.length) continue;
     for (const item of group) {
-      const advice = adviceFor(item.ruleId, item.category);
+      const advice = adviceFor(item.ruleId && kindOf(item.ruleId), item.category);
       if (!advised.has(advice)) advisedKeys.add(item.key);
       advised.add(advice);
     }
     // One card per kind of point; repeats of the same rule fold under it.
     const kinds = new Map<string, Item[]>();
     for (const item of group) {
-      const k = item.ruleId ?? `ai:${item.key}`;
-      kinds.set(k, [...(kinds.get(k) ?? []), item]);
+      const k = kindKey(item);
+      const same = kinds.get(k) ?? [];
+      // Two rules on one card often quote the same sentence: show it once.
+      if (!same.some((o) => o.start === item.start)) same.push(item);
+      kinds.set(k, same);
     }
     const section = h("section", `group sev-${sev}`);
     section.append(h("h3", "group-title", `${SEVERITY_LABEL[sev]} (${kinds.size})`));
@@ -274,12 +283,13 @@ function renderCard(item: Item): HTMLElement {
   // Long quotes are cut to keep cards short; the full sentence is in the document panel and on hover.
   const quote = h("blockquote", "quote", clipAround(item.quote, QUOTE_MAX, item.at));
   if (item.quote.length > QUOTE_MAX) quote.title = item.quote;
-  card.append(tags, h("p", "say", item.say), quote);
+  const say = item.ruleId ? kindSay(items.filter((i) => i.ruleId && kindKey(i) === kindKey(item)).map((i) => i.ruleId!), item.say) : item.say;
+  card.append(tags, h("p", "say", say), quote);
 
   // Next move: a safeguard to add, on the first card of its kind only.
   if (advisedKeys.has(item.key)) {
     const moves = h("dl", "moves");
-    moves.append(h("dt", "", "Add"), h("dd", "", adviceFor(item.ruleId, item.category)));
+    moves.append(h("dt", "", "Add"), h("dd", "", adviceFor(item.ruleId && kindOf(item.ruleId), item.category)));
     card.append(moves);
   }
 
@@ -310,11 +320,15 @@ function renderCard(item: Item): HTMLElement {
 
 /** Clicking the active choice again clears it. Cards update in place (no re-sort under the cursor). */
 function setPref(ruleId: string, value: Choice, focusKey: string): void {
-  if (prefs[ruleId] === value) delete prefs[ruleId];
-  else prefs[ruleId] = value;
+  const kind = rulesOfKind(ruleId);
+  const clear = prefs[ruleId] === value;
+  for (const id of kind) {
+    if (clear) delete prefs[id];
+    else prefs[id] = value;
+  }
   save(PREFS_KEY, prefs);
   for (const item of items) {
-    if (item.ruleId === ruleId) document.getElementById(`card-${item.key}`)?.replaceWith(renderCard(item));
+    if (item.ruleId && kind.includes(item.ruleId)) document.getElementById(`card-${item.key}`)?.replaceWith(renderCard(item));
   }
   renderSummary();
   document.querySelector<HTMLButtonElement>(`#card-${focusKey} .choice-${value}`)?.focus();

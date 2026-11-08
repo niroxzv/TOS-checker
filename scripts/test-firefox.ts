@@ -199,8 +199,9 @@ async function main(): Promise<void> {
     check("it read this page and the Privacy Policy", ["This page: First check", "Privacy Policy: First check"].every((d) => report?.docs.includes(d)), report?.docs.join(" | "));
     check("flags have Show on page / Open and show", report?.show.includes("Show on page") && report?.show.includes("Open and show"));
     check("the Cookie Policy on another site waits for Allow", report?.unread.join() === "Cookie Policy", report?.unread.join());
+    // 3: the arbitration and jury-waiver flags quote the same sentence and show as one.
     const badge = await bidi.json(chrome, `({ text: ${actionFor}.action.getProperty(gBrowser.selectedTab, "badgeText"), title: ${actionFor}.action.getProperty(gBrowser.selectedTab, "title") })`);
-    check("toolbar badge shows the high-risk count", badge.text === "4", `"${badge.text}", "${badge.title}"`);
+    check("toolbar badge shows the high-risk count", badge.text === "3", `"${badge.text}", "${badge.title}"`);
 
     // 2. Show on page, pressed in the popup: the sentence is highlighted in the tab.
     await inPopup(`const card = [...doc.querySelectorAll(".card")].find((c) => c.querySelector(".source").textContent === "From: This page" && /binding individual arbitration/.test(c.querySelector(".quote").title || c.querySelector(".quote").textContent));
