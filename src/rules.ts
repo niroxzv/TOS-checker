@@ -21,6 +21,15 @@ const near = (verbs: string, objects: string, gap = 80) => String.raw`\b(?:${ver
 /** Every lookahead must hit somewhere in the clause, in any order. */
 const all = (...parts: string[]) => new RegExp("^" + parts.map((p) => `(?=.*?${p})`).join(""), "is");
 
+/**
+ * A rule for you, not a power of theirs: "you may not…", "you agree not to…", "we recommend that you…".
+ * "You may not be able to…" and "you won't be told…" are about what happens to you, so they don't count.
+ */
+const FOR_YOU = /\b(?:you|users?)\s+(?:(?:may|must|shall|will|should)\s+not|(?:won|mustn|shouldn)'t)\b(?!\s+be\b)|\b(?:you|users?)\s+(?:agree|promise|undertake)\s+not\s+to\b|\b(?:you|users?)\s+are\s+not\s+(?:allowed|permitted)\b|\brecommend\s+that\s+you\b/i;
+/** An item of a "don't do this" list (an acceptable use policy): it starts with an order, e.g. "Misuse, collect… biometric data". */
+const DONT_LIST_ITEM = /^\W*(?:\(?[a-z0-9]{1,3}[.)]\s*)?(?:misuse|solicit|target|utili[sz]e|exploit|infer|harvest|scrape|distill|circumvent|impersonate)\b/i;
+const BIOMETRIC = String.raw`\b(?:biometrics?|facial (?:geometry|recognition)|face ?prints?|voice ?prints?|fingerprints?|face (?:geometry|data|scans?)|retina scans?|iris scans?)\b`;
+
 export const RULES: Rule[] = [
   // ── What they collect ─────────────────────────────────────────────
   {
@@ -30,7 +39,7 @@ export const RULES: Rule[] = [
     say: "They collect your location.",
     match: [/\b(collect|track|access|gather|obtain|receive)\w*\b[^.]{0,60}\b(location|GPS|geolocation)\b/i,
       /\b(location|GPS|geolocation)\b[^.]{0,20}\b(collected|tracked|accessed)\b/i],
-    unless: [denies("collect|track|access|gather|obtain|receive")],
+    unless: [denies("collect|track|access|gather|obtain|receive"), FOR_YOU, DONT_LIST_ITEM],
   },
   {
     id: "collects_contacts",
@@ -39,15 +48,18 @@ export const RULES: Rule[] = [
     say: "They collect your contacts (your address book).",
     match: [/\b(collect|access|upload|import|sync)\w*\b[^.]{0,60}\b(contacts|address book|contact list|phone ?book)\b/i,
       /\b(contacts|address book|contact list)\b[^.]{0,20}\b(uploaded|synced|imported|collected|accessed)\b/i],
-    unless: [denies("collect|access|upload|import|sync")],
+    unless: [denies("collect|access|upload|import|sync"), FOR_YOU, DONT_LIST_ITEM],
   },
   {
     id: "collects_biometrics",
     category: "data-collection",
     severity: "high",
     say: "They collect biometric data, such as your face or voice.",
-    match: [/\b(biometrics?|facial (geometry|recognition)|face ?prints?|voice ?prints?|fingerprints?|face (geometry|data|scans?)|retina scans?|iris scans?)\b/i],
-    unless: [denies("collect|use|store|process|capture|receive")],
+    // A biometric word and something done with it. A bare mention ("never upload biometric data") isn't enough.
+    match: [all(BIOMETRIC, String.raw`\b(?:(?:collect|process|captur|receiv|obtain|access|extract|analy[sz]|generat|deriv|retain|disclos)\w*|use[sd]?|using|stor(?:e|es|ed|ing)|keeps?|kept|shar(?:e|es|ed|ing)|sells?|sold)\b`)],
+    unless: [denies("collect|use|store|process|capture|receive|extract|mine"), FOR_YOU, DONT_LIST_ITEM,
+      // "This includes using our products for facial recognition": you using their product, in a usage policy.
+      /\b(?:includes?|including)\s+using\s+(?:our|the|its)\s+(?:products?|services?|models?)\b/i],
   },
   {
     id: "tracks_across_sites",
@@ -55,10 +67,13 @@ export const RULES: Rule[] = [
     severity: "medium",
     say: "They track what you do on other websites or apps, usually for ads.",
     match: [
-      /\b(track|collect|monitor|follow)\w*\b[^.]{0,80}\b(across|on other)\b[^.]{0,40}\b(websites|sites|apps|applications|services|devices)\b/i,
+      // Not "across your devices": that's their own app on your phone and laptop, not other sites.
+      /\b(track|collect|monitor|follow)\w*\b[^.]{0,80}\b(across|on other)\b[^.]{0,40}\b(websites|sites|apps|applications|services)\b/i,
       /\b(third[- ]party|advertising)\s+(cookies|trackers|pixels)\b/i,
+      // "Advertisers share information with us about … actions you have taken outside of the Platform"
+      /\b(activit(y|ies)|actions?|browsing|what you do)\b[^.]{0,60}\b(outside (of )?(the|our) (platform|services?|apps?|sites?)|on other (websites|sites|apps|platforms))\b/i,
     ],
-    unless: [denies("track|follow|monitor|use (?:third[- ]party|advertising)"), /\bno\s+(third[- ]party|advertising)\s+(cookies|trackers|pixels)\b/i],
+    unless: [denies("track|follow|monitor|use (?:third[- ]party|advertising)"), /\bno\s+(third[- ]party|advertising)\s+(cookies|trackers|pixels)\b/i, FOR_YOU],
   },
   {
     id: "keeps_data_after_deletion",
@@ -84,7 +99,9 @@ export const RULES: Rule[] = [
       /\b(data|information)\b[^.,;]{0,20}\b(sold|rented)\b/i,
       /\bsale of\b[^.,;]{0,30}\b(data|information)\b/i,
     ],
-    unless: [denies("sell|rent|be sold|be rented|sold|rented")],
+    unless: [denies("sell|rent|be sold|be rented|sold|rented"), FOR_YOU,
+      // "not based on selling your personal information", "we don't make money from selling it"
+      /(?:\bnot|\bnever|n't)\s+(?:\w+\s+){0,3}(?:from|by|on|through)\s+(?:selling|renting)\b/i],
   },
   {
     id: "shares_data",
@@ -95,7 +112,11 @@ export const RULES: Rule[] = [
     match: [
       /^(?=.*\b(share[sd]?|sharing|disclose[sd]?|disclosing|transfer(s|red)?)\b)(?=.*\b(third[- ]part(y|ies)|advertisers|partners|affiliates|data brokers|new owners?|successors?)\b)(?=.*\b(data|information)\b)/is,
     ],
-    unless: [denies("share|disclose|transfer"), /\bno third[- ]part(y|ies)\b/i],
+    unless: [denies("share|disclose|transfer"), /\bno third[- ]part(y|ies)\b/i, FOR_YOU,
+      // Others sharing with them ("authorize third-party services to share data with us") is the other way round.
+      /\bshar\w*\s+(?:[\w,'-]+\s+){0,6}?with\s+us\b/i,
+      // "Confidential Information" clauses are about their secrets you must keep, not your data.
+      /\bconfidential information\b/i],
   },
 
   // ── What happens to your content ──────────────────────────────────
@@ -108,7 +129,7 @@ export const RULES: Rule[] = [
     match: [
       /^(?=.*\byou(\s+(?!we\b)\w+){0,3}\s+(grant\w*|give)\b)(?=.*\b(perpetual|irrevocable|worldwide|world-wide|royalty[- ]free|sublicensable)\b)(?=.*\b(licen[cs]e|right)s?\b)/is,
     ],
-    unless: [denies("grant|give")],
+    unless: [denies("grant|give"), /\byou\s+(?:are|have\s+been)\s+(?:\w+\s+)?granted\b/i], // "you are hereby granted" a license: theirs to you
   },
   {
     id: "ai_training",
@@ -125,6 +146,18 @@ export const RULES: Rule[] = [
       // A rule for you, not them: don't use the service or what it generates to build a competing AI
       // (distillation). Often an item in a "you must not" list, so the clause itself has no "not".
       /\b(compet(e|es|ing|itive|itors?)|distill\w*|reverse[- ]engineer\w*)\b/i,
+      FOR_YOU,
+      DONT_LIST_ITEM,
+      // Training *any* or *other* models is about you ("training other models", "scraping to train any AI model").
+      // Not "develop other products and services, including training our models": that one is theirs.
+      /\b(?:develop\w*|train\w*)\s+(?:or\s+\w+\s+)?(?:any|other|another|your\s+own)\s+(?:[\w-]+\s+){0,3}?(?:models?|AI|artificial intelligence|LLMs?)\b/i,
+      // Permission for you: "(3) You may apply the Inputs and Outputs to … training other models".
+      // "You may opt out of model training" still flags: it means they train on your data unless you do.
+      /^\W*(?:\(?[a-z0-9]{1,3}[.)]\s*)?you\s+(?:may|can)\b(?!\s+(?:also\s+)?opt\b)/i,
+      // About how their models work, not what they do with your data.
+      /\btraining\s+(?:methods?|process(?:es)?|mechanisms?)\b|\bmodel'?s?\s+(?:mechanism|principles)\b|\b(?:model'?s?|static)\s+training\s+data\b/i,
+      // "This license does not, however, permit GitHub to share your Inputs … for model training"
+      /\b(?:does|do|will|shall)\s+not\b[^.]{0,30}\b(?:permit|allow|authori[sz]e)\b/i,
     ],
   },
   {

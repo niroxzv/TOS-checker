@@ -146,10 +146,16 @@ async function evaluate(sessionId: string, expression: string): Promise<any> {
 }
 
 async function openTab(url: string, background = false): Promise<{ targetId: string; sessionId: string }> {
-  const { targetId } = await cdp.send("Target.createTarget", { url, background });
+  const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank", background });
   const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
   await cdp.send("Runtime.enable", {}, sessionId);
   await cdp.send("Page.enable", {}, sessionId);
+  if (!USE_AI) {
+    // Without AI mode, the page must not reach a local model server (Ollama, llama-server), not even to list models.
+    await cdp.send("Network.enable", {}, sessionId);
+    await cdp.send("Network.setBlockedURLs", { urls: ["*://127.0.0.1:11434/*", "*://localhost:11434/*", "*://127.0.0.1:8080/*", "*://localhost:8080/*"] }, sessionId);
+  }
+  await cdp.send("Page.navigate", { url }, sessionId);
   await waitFor(`${url} to load`, () => evaluate(sessionId, `document.readyState === "complete" && location.href !== "about:blank"`));
   return { targetId, sessionId };
 }
@@ -309,10 +315,8 @@ async function demo(port: number): Promise<number> {
   await clickOn(s, `document.querySelector("#cards .card .say")`);
   await sleep(2800);
   await shot(s, "app-flag.png");
-  caption("Every point comes with a next move: Add a safeguard, Check a setting, or Tell someone.");
-  await moveTo(s, `document.querySelector("#cards .card .moves dt")`);
-  await sleep(900);
-  await moveTo(s, `document.querySelectorAll("#cards .card .moves dt")[2]`);
+  caption("Every kind of point comes with a next move: one safeguard to add.");
+  await moveTo(s, `document.querySelector("#cards .card .moves dd")`);
   await sleep(1800);
 
   const share = `[...document.querySelectorAll("#cards .card")].find((c) => /share your data/.test(c.querySelector(".say")?.textContent ?? ""))`;
@@ -383,7 +387,7 @@ async function demo(port: number): Promise<number> {
   mark({ kind: "overlay", on: true });
   caption("It checks the page plus the Terms, Privacy and Cookie pages it links to, in one report.");
   await sleep(4400);
-  caption("Every point says which page it came from, with the same Add, Check, Tell moves.");
+  caption("Every point says which page it came from, with the same safeguard to add.");
   await evaluate(copy.sessionId, `(scrollTo({ top: document.querySelector(".flags").getBoundingClientRect().top + scrollY - 8, behavior: "smooth" }), true)`);
   await sleep(4200);
   await evaluate(copy.sessionId, `(scrollBy({ top: 330, behavior: "smooth" }), true)`);

@@ -31,7 +31,24 @@ export function readable(text: string): string {
   return text
     .replace(/\p{Cf}/gu, "")
     .normalize("NFKC")
-    .replace(DISGUISED_WORD, (word) => word.replace(LOOKALIKE_CHAR, (c) => LOOKALIKE[c]));
+    .replace(DISGUISED_WORD, (word) => word.replace(LOOKALIKE_CHAR, (c) => LOOKALIKE[c]))
+    // Web pages write "don’t" with a curly apostrophe; the rules look for "don't".
+    .replace(/[‘’‛ʼ]/g, "'")
+    .replace(/[“”„‟]/g, '"');
+}
+
+/**
+ * A heading such as "GitHub May Terminate", "AI Features, Training, and Your Data" or "BILLING; NO REFUNDS".
+ * It says nothing by itself, and the sentences under it get their own flags. Title Case (every word of four
+ * letters or more capitalised) or ALL CAPS without a full stop, and at most 12 words.
+ */
+export function isHeading(text: string): boolean {
+  const s = text.trim();
+  const words = s.match(/\p{L}[\p{L}\p{M}'-]*/gu) ?? [];
+  if (words.length === 0 || words.length > 12) return false;
+  if (!/\p{Ll}/u.test(s)) return !/[.!?:]$/.test(s);
+  const long = words.filter((w) => w.replace(/['-]/g, "").length >= 4);
+  return long.length > 0 && long.every((w) => /^\p{Lu}/u.test(w));
 }
 
 export interface AnalyzeOptions {
@@ -47,6 +64,7 @@ export function analyze(text: string, rules: Rule[] = RULES, opts: AnalyzeOption
 
   for (const clause of splitClauses(text)) {
     const read = readable(clause.text);
+    if (isHeading(read)) continue;
     let hits: Rule[] = [];
     const cancelled = new Set<UnfairTosLabel>(); // types a rule's `unless` explicitly ruled out here
     for (const rule of rules) {

@@ -203,14 +203,24 @@ function renderSummary(): void {
   summaryEl.append(k, num, line, tally);
 }
 
+/** Keys of the cards that carry their Add: the first card per piece of advice, so a rule that fires 20 times says it once. */
+let advisedKeys = new Set<string>();
+
 function renderCards(): void {
   cardsEl.replaceChildren();
+  advisedKeys = new Set();
+  const advised = new Set<string>();
   for (const sev of SEVERITIES) {
     // Dealbreakers first, then document order.
     const group = items
       .filter((i) => i.severity === sev)
       .sort((a, b) => Number(isDealbreaker(b)) - Number(isDealbreaker(a)) || a.start - b.start || Number(a.ai) - Number(b.ai));
     if (!group.length) continue;
+    for (const item of group) {
+      const advice = adviceFor(item.ruleId, item.category);
+      if (!advised.has(advice)) advisedKeys.add(item.key);
+      advised.add(advice);
+    }
     const section = h("section", `group sev-${sev}`);
     section.append(h("h3", "group-title", `${SEVERITY_LABEL[sev]} (${group.length})`), ...group.map(renderCard));
     cardsEl.append(section);
@@ -233,13 +243,12 @@ function renderCard(item: Item): HTMLElement {
   if (item.ai) tags.append(h("span", "badge badge-ai", "AI · quote checked"));
   card.append(tags, h("p", "say", item.say), h("blockquote", "quote", item.quote));
 
-  // Next move, in the Add / Check / Tell habit.
-  const advice = adviceFor(item.ruleId, item.category);
-  const moves = h("dl", "moves");
-  for (const [label, text] of [["Add", advice.add], ["Check", advice.check], ["Tell", advice.tell]]) {
-    moves.append(h("dt", "", label), h("dd", "", text));
+  // Next move: a safeguard to add, on the first card of its kind only.
+  if (advisedKeys.has(item.key)) {
+    const moves = h("dl", "moves");
+    moves.append(h("dt", "", "Add"), h("dd", "", adviceFor(item.ruleId, item.category)));
+    card.append(moves);
   }
-  card.append(moves);
 
   const ruleId = item.ruleId;
   if (ruleId) {

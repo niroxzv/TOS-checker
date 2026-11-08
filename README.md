@@ -5,13 +5,13 @@ Know what you're agreeing to before you tick. Tickwise reads a terms of service 
 - **Rule mode** (always on): hand-written rules plus a small trained model that double-checks them. The checking runs on your device with no AI server, and it is instant. Every flag points at the exact sentence it came from. (The browser extension also downloads the terms pages a site links to, so it can check them too.)
 - **AI mode** (optional): a small local model (tested: Qwen 3.5 4B/9B through Ollama; llama.cpp also works) reads only the clauses the rules pick out, writes a plain-English summary and catches what the rules missed. Every AI point must quote the text, and points whose quote isn't really in the document are thrown away.
 
-Every flag comes with an **Add / Check / Tell** next move (put a safeguard in place, check a setting, talk to someone), and the whole document gets a **boundary score** out of 100.
+Each kind of flag comes with one **Add**: a safeguard to put in place, shown once even if the same point comes up many times. The whole document gets a **boundary score** out of 100.
 
 Not legal advice.
 
 ![The extension on a sign-up page: a boundary score of 22 out of 100, from the page and the two policies it links to](docs/screenshots/extension-in-context.png)
 
-![A flag in the web app: the exact quote, then Add / Check / Tell, next to the highlighted document](docs/screenshots/app-flag.png)
+![A flag in the web app: the exact quote, then a safeguard to add, next to the highlighted document](docs/screenshots/app-flag.png)
 
 ## Layout
 
@@ -19,7 +19,7 @@ Not legal advice.
 |---|---|
 | `src/` | Rule engine: clause splitter, rules, `analyze()` |
 | `src/model.ts`, `src/model-weights.ts` | Small trained model (logistic regression) that confirms or adds the 8 benchmark clause types |
-| `src/advice.ts`, `src/score.ts` | Add / Check / Tell advice for each rule, and the boundary score |
+| `src/advice.ts`, `src/score.ts` | The safeguard to add for each rule, and the boundary score |
 | `src/ai/` | AI mode: talks to a local `llama-server`, checks every quote |
 | `app/` | Web app: paste or open a document (plain HTML/CSS/TS) |
 | `extension/` | Browser extension (Firefox, Edge, Chrome) that checks the page you're on |

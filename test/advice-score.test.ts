@@ -1,19 +1,24 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { adviceFor } from "../src/advice.ts";
+import { adviceFor, ALL_ADVICE } from "../src/advice.ts";
 import { RULES } from "../src/rules.ts";
 import { boundaryScore } from "../src/score.ts";
 
 describe("advice", () => {
-  test("every rule has an Add, Check and Tell", () => {
+  test("every rule has its own advice, not a category's", () => {
+    const fallbacks = new Set(["data-collection", "data-sharing", "your-content", "your-rights", "money", "action"].map((c) => adviceFor(null, c as any)));
     for (const r of RULES) {
       const a = adviceFor(r.id, r.category);
-      assert.ok(a.add && a.check && a.tell, r.id);
+      assert.ok(a && !fallbacks.has(a), r.id);
     }
   });
 
+  test("no two flags give the same advice", () => {
+    assert.equal(new Set(ALL_ADVICE).size, ALL_ADVICE.length);
+  });
+
   test("AI points fall back to their category", () => {
-    assert.ok(adviceFor(null, "money").add);
+    assert.ok(adviceFor(null, "money"));
   });
 });
 

@@ -6,17 +6,17 @@
 - [x] Sentence splitter that keeps exact positions, so every quote matches the document character for character.
 - [x] 21 rules across six areas: data collected, data shared, your content, your rights, money, and what you can do.
 - [x] Tuned on the UNFAIR-ToS benchmark: train and validation splits only, with the test split held out. Results are in "Accuracy" below.
-- [x] Add / Check / Tell next move for every rule, with Singapore-specific help: PDPA, PDPC, CASE (`src/advice.ts`).
+- [x] One safeguard to **Add** for every rule, each different, with Singapore-specific help where it fits, such as CASE (`src/advice.ts`). A rule that fires many times shows its Add on the first card only.
 - [x] Boundary score out of 100, with dealbreakers costing extra (`src/score.ts`).
 - [x] Small trained model (`src/model.ts`): logistic regression over words, word pairs and which rules fired. It confirms or adds the 8 benchmark clause types, about 600 KB, and runs on the device. Retrain with `npm run train`.
 - [x] Disguised text doesn't hide a clause: hidden characters (soft hyphens, zero-width spaces), full-width letters and Latin words spelt with look-alike Cyrillic or Greek letters are read as plain text. Flags still quote the original.
 - [x] No slow patterns: 200 KB of hostile text (like "a.b.a.b." or thousands of blank lines) is checked in about 0.1 s. Before 7 Nov 2026 it took tens of seconds.
-- [x] All tests pass with `npm test` (204).
+- [x] All tests pass with `npm test` (236).
 
 ### Web app (`app/`)
 - [x] Paste the terms, open a file, or try a sample, then press Check (or Ctrl+Enter).
 - [x] Tickwise look: ivory paper, Redaction serif, uppercase mono labels, a dark score band with a verdict pill and a High / Med / Low tally, coral severity pills. Fonts are bundled, so nothing loads from the internet.
-- [x] Each flag shows what it means, the exact quote, Add / Check / Tell, and Approve / Not OK buttons. Your choices are saved and the score updates.
+- [x] Each flag shows what it means, the exact quote, a safeguard to add (once per kind of flag), and Approve / Not OK buttons. Your choices are saved and the score updates.
 - [x] Click a flag to jump to the highlighted sentence in the document.
 - [x] Tested in the browser with the sample: renders, no console errors.
 
@@ -83,6 +83,11 @@
   - Unilateral termination now also catches "may stop providing the service", "grounds for termination", "has discretion to terminate", "terminates automatically if you…", "withdraw access" and "may suspend users".
   - Most arbitration flags still counted wrong are real arbitration sentences. UNFAIR-ToS marks only one sentence per arbitration section as unfair, so "disputes must be resolved by binding arbitration" in a summary notice counts as a mistake. Removing those would hide true clauses, so they stay.
 - 8 Nov 2026: "They may use your content or data to train AI" no longer fires on rules for you, such as "don't use the service or what it generates to build a competing AI" (distillation) in a "you must not" list. Found on Qwen's terms. The test scores didn't change.
+- 8 Nov 2026: the privacy and AI rules were rechecked on real terms and privacy policies (AI chat apps, social apps, GitHub) and tuned. The test scores didn't change.
+  - Headings such as "GitHub May Terminate" or "AI Features, Training, and Your Data" are skipped; the sentences under them still flag.
+  - Curly apostrophes read like straight ones, so "We don’t sell your personal information" no longer flags as selling.
+  - Rules for you ("you may not…", "you agree not to…", items of a "don't do this" list) no longer flag as something the company does. Nor do "not based on selling", others sharing data *with* the company, a license the company gives *you*, how their models are trained in general, and "use our products for facial recognition" in a usage policy.
+  - Collecting biometrics now needs something done with the data, not just the word. Tracking now catches "actions you take on other sites"; "usage across your devices" (their own app on your phone and laptop) no longer counts.
 - Bigger variants (character n-grams, larger vocabularies) did not beat this model in cross-validation: all scored within 0.5 points. Plain-text models top out around here. The next real gain needs a transformer or the local LLM (see AI mode).
 
 ## To do

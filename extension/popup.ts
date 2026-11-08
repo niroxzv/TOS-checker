@@ -377,7 +377,13 @@ function render(): void {
   if (failed.length > 0) main.append(failedBlock());
   const flags = el("section", { className: "flags" }, el("h2", { text: plural(hits.length, "flag") }));
   if (hits.length === 0) flags.append(el("p", { className: "muted", text: "Nothing flagged. That doesn't mean it's harmless, so skim it anyway." }));
-  for (const hit of hits) flags.append(card(hit));
+  // A rule can fire many times on one page; its Add shows on the first card only.
+  const advised = new Set<string>();
+  for (const hit of hits) {
+    const advice = adviceFor(hit.flag.ruleId, hit.flag.category);
+    flags.append(card(hit, advised.has(advice) ? null : advice));
+    advised.add(advice);
+  }
   main.append(flags);
 }
 
@@ -444,7 +450,7 @@ function docList(): HTMLElement {
   return el("section", {}, el("h2", { text: `Checked ${plural(docs.length, "document")}` }), list);
 }
 
-function card(hit: Hit): HTMLElement {
+function card(hit: Hit, advice: string | null): HTMLElement {
   const { flag, doc } = hit;
   const pref = prefs[flag.ruleId];
   let className = `card sev-${flag.severity}`;
@@ -464,11 +470,6 @@ function card(hit: Hit): HTMLElement {
   const quote = el("blockquote", { className: "quote", text: clip(quoteText, QUOTE_MAX) });
   if (quoteText.length > QUOTE_MAX) quote.title = quoteText;
 
-  const advice = adviceFor(flag.ruleId, flag.category);
-  const steps = el("dl", { className: "advice" });
-  for (const [term, text] of [["Add", advice.add], ["Check", advice.check], ["Tell", advice.tell]]) {
-    steps.append(el("dt", { text: term }), el("dd", { text }));
-  }
 
   const actions = el(
     "div",
@@ -486,7 +487,7 @@ function card(hit: Hit): HTMLElement {
     el("p", { className: "say", text: flag.say }),
     quote,
     el("p", { className: "source", text: `From: ${doc.name}` }),
-    steps,
+    ...(advice ? [el("dl", { className: "advice" }, el("dt", { text: "Add" }), el("dd", { text: advice }))] : []),
     actions,
   );
 }

@@ -225,9 +225,63 @@ const RED_TEAM: Record<string, { hits?: string[]; misses?: string[] }> = {
     hits: ["By creating an account or using BrightBoard, you agree to these Terms."],
   },
 };
-for (const [id, extra] of Object.entries(RED_TEAM)) {
-  FIXTURES[id].hits.push(...(extra.hits ?? []));
-  FIXTURES[id].misses.push(...(extra.misses ?? []));
+// Misreads found by running real terms and privacy policies (AI chat apps, social apps, GitHub) through
+// the engine, shortened. Mostly rules for the user, or things a company says it does *not* do.
+const REAL_TERMS: Record<string, { hits?: string[]; misses?: string[] }> = {
+  sells_data: {
+    misses: [
+      "We don’t sell your personal information.", // curly apostrophe, as web pages write it
+      "Our business is funded through subscriptions, not based on selling your personal information to third parties.",
+      "We don’t make money from selling your personal information to third parties.",
+      "You may not use the API to download data for the purpose of selling users' personal information to recruiters.",
+    ],
+  },
+  shares_data: {
+    misses: [
+      "We recommend that you avoid sharing your own or others' personal information with third parties when using this feature.",
+      "You promise not to disclose any Confidential Information to any third party.",
+      "This also applies if you authorize third-party services to share data with us.",
+      "Confidential Information will not include information that a third party disclosed to you without breaching a duty to us.",
+    ],
+  },
+  tracks_across_sites: {
+    hits: [
+      "Advertisers and other partners share information with us about the actions you have taken outside of the Platform, such as your activities on other websites.",
+      "When you take certain actions on other sites, we may receive information about you.",
+    ],
+    misses: ["We improve the app by monitoring interactions and usage across your devices."],
+  },
+  collects_biometrics: {
+    misses: [
+      "Misuse, collect, or gain access without permission to private information such as biometric data.",
+      "Target or track a person without their consent by monitoring their location or biometrics.",
+      "This includes using our products for facial recognition or predictive policing.",
+      "We will not extract or mine voiceprint or facial recognition information from your voice inputs or photos.",
+    ],
+  },
+  ai_training: {
+    hits: [
+      "We may use your materials to develop other products and services, including training our models, unless you opt out.",
+      "You may opt out of model training by emailing us.",
+    ],
+    misses: [
+      "(3) You may apply the Inputs and Outputs of the Services to many uses, including training other models.",
+      "Output may contain material that resembles content in the model's training data.",
+      "If you would like to learn more about our model mechanism or training methods, please see our explainer.",
+      "This license does not permit us to share your Inputs with third-party AI model providers for their own model training.",
+      "When using our AI Features, you must not use Inputs to train or improve any machine learning model.",
+      "By scraping public content for the purpose of developing or training any commercially available artificial intelligence model, you agree to these terms.",
+    ],
+  },
+  broad_content_license: {
+    misses: ["You are hereby granted a non-exclusive, revocable, worldwide license to access and use the Services."],
+  },
+};
+for (const extra of [RED_TEAM, REAL_TERMS]) {
+  for (const [id, { hits = [], misses = [] }] of Object.entries(extra)) {
+    FIXTURES[id].hits.push(...hits);
+    FIXTURES[id].misses.push(...misses);
+  }
 }
 
 // Ordinary sentences that no rule should flag.

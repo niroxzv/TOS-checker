@@ -58,7 +58,7 @@ After changing the code, run `npm run build` again and click **Reload** on the e
   - In Edge and Chrome the popup closes when the browser's prompt opens: accept it, then click the icon again. In Firefox the popup stays open and reads the page as soon as you accept.
   - For a plain-http link it asks for that site over http and https, because Firefox sends the extension's request over https (`upgrade-insecure-requests` in its default extension policy). So in Firefox, a terms page on another site that only works over plain http can't be read this way.
 - **Very long pages**: each document is checked up to its first 500,000 characters (long terms run to about 300,000), and the list says when one was cut.
-- **One report**: the boundary score band (its colour is the verdict), "Checked N documents" with a flag count for each, then one card per flag with severity, category, the plain-English point, the quote, **From: <document>**, **Add / Check / Tell**, and **Approve / Not OK**.
+- **One report**: the boundary score band (its colour is the verdict), "Checked N documents" with a flag count for each, then one card per flag with severity, category, the plain-English point, the quote, **From: <document>**, the safeguard to **Add** (on the first card of each kind), and **Approve / Not OK**.
 - **Show on page**: on a flag from the page you're on, scrolls the page to that sentence and highlights it in lime (the CSS Custom Highlight API; the browser selects the sentence instead if it doesn't have that API). The highlight stays until the page reloads. If the page changed since the check, the button says "Not found on page".
 - **Open and show**: on a flag from a linked page, opens that page in a new tab at the sentence, using a text fragment (`#:~:text=…`). If the browser can't find the text (some pages build their text with JavaScript), the page opens at the top.
 - **Badge**: after a check, the toolbar icon shows the number of high-risk flags in coral, for that tab only. The browser clears it when the tab goes to another page.
@@ -107,7 +107,7 @@ Firefox 159 sometimes never finishes starting with a new profile (WebDriver BiDi
 Verified in the real browser:
 - The extension loads unpacked with its icons, and the toolbar click opens the popup with no console errors.
 - It reads the current page and the same-origin Privacy Policy. It skips links that aren't legal pages (Help, Features).
-- One merged report: the score band, "Checked N documents", and flags from every document, each with "From: <document>", Add / Check / Tell, Approve / Not OK, and Show on page (this page) or Open and show (linked pages).
+- One merged report: the score band, "Checked N documents", and flags from every document, each with "From: <document>", one Add per kind of flag, Approve / Not OK, and Show on page (this page) or Open and show (linked pages).
 - The toolbar badge shows the high-risk count (4), with a tooltip that says so.
 - Cross-origin: the Cookie Policy on another origin is listed as unread with **Allow reading 1 more page**. Once the origin is granted, a real (trusted) click on Allow reads it, and the report goes to 3 documents. The next click on the icon reads it without asking.
 - Not OK makes a dealbreaker, lowers the score (22 to 17), is saved to `chrome.storage.local`, and survives reopening. Clicking it again clears it.

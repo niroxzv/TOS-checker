@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "node:test";
-import { analyze, readable } from "../src/engine.ts";
+import { analyze, isHeading, readable } from "../src/engine.ts";
 import { splitClauses } from "../src/split.ts";
 
 const sample = readFileSync(new URL("../samples/sample-tos.txt", import.meta.url), "utf8");
@@ -88,6 +88,23 @@ describe("disguised text", () => {
     assert.equal(readable("Мы продаём данные"), "Мы продаём данные");
     assert.equal(readable("café résumé"), "café résumé");
     assert.equal(readable(`pro${String.fromCharCode(0xfb01)}le`), "profile");
+  });
+});
+
+describe("headings and curly quotes", () => {
+  test("headings are not flagged; the sentences under them are", () => {
+    for (const h of ["GitHub May Terminate", "Subject to Change", "AI Features, Training, and Your Data", "BILLING SCHEDULE; NO REFUNDS"]) {
+      assert.ok(isHeading(h), h);
+      assert.deepEqual(analyze(h), [], h);
+    }
+    for (const s of ["We may terminate your account at any time.", "We may sell your data.", "WE MAY SELL YOUR DATA."]) {
+      assert.ok(!isHeading(s), s);
+    }
+  });
+
+  test("a curly apostrophe reads like a straight one", () => {
+    assert.equal(readable("We don’t sell “your” data"), `We don't sell "your" data`);
+    assert.deepEqual(analyze("We don’t sell your personal information."), []);
   });
 });
 
