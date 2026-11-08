@@ -86,6 +86,7 @@ export function analyze(text: string, rules: Rule[] = RULES, opts: AnalyzeOption
     }
 
     for (const rule of hits) {
+      const at = rule.match.map((re) => read.search(re)).filter((i) => i >= 0).sort((a, b) => a - b)[0];
       flags.push({
         ruleId: rule.id,
         category: rule.category,
@@ -94,6 +95,7 @@ export function analyze(text: string, rules: Rule[] = RULES, opts: AnalyzeOption
         quote: clause.text,
         start: clause.start,
         end: clause.end,
+        ...(at !== undefined ? { at } : {}),
       });
     }
   }

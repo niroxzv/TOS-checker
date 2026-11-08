@@ -49,4 +49,6 @@ export interface Flag {
   quote: string;
   start: number;
   end: number;
+  /** Where in the quote the rule matched (roughly; absent when only the model found it). Used to cut long quotes. */
+  at?: number;
 }

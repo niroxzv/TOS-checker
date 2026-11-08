@@ -1,4 +1,5 @@
 import { adviceFor } from "../src/advice.ts";
+import { clipAround } from "../src/clip.ts";
 import { analyze } from "../src/engine.ts";
 import { boundaryScore } from "../src/score.ts";
 import type { Category, Flag, Severity } from "../src/types.ts";
@@ -26,6 +27,8 @@ interface Item {
   quote: string;
   start: number;
   end: number;
+  /** Where in the quote the rule matched, for cutting long quotes. */
+  at?: number;
   ai: boolean;
 }
 
@@ -152,7 +155,7 @@ function check(): void {
   ruleFlags = analyze(text);
   items = ruleFlags.map((f, n) => ({
     key: `r${n}`, ruleId: f.ruleId, category: f.category, severity: f.severity,
-    say: f.say, quote: f.quote, start: f.start, end: f.end, ai: false,
+    say: f.say, quote: f.quote, start: f.start, end: f.end, at: f.at, ai: false,
   }));
   output.hidden = false;
   render();
@@ -184,20 +187,18 @@ function renderSummary(): void {
   summaryEl.className = `hero band-${label === "Low risk" ? "ok" : label === "Think twice" ? "warn" : "bad"}`;
   const num = h("p", "num", String(score));
   num.append(h("small", "", "/ 100"));
-  const counts = SEVERITIES.map((sev) => [sev, items.filter((i) => i.severity === sev).length] as const)
-    .filter(([, n]) => n)
-    .map(([sev, n]) => `${n} ${SEVERITY_LABEL[sev].toLowerCase()}`)
-    .join(", ");
   const deals = new Set(items.filter(isDealbreaker).map((i) => i.ruleId)).size;
   const line = h("p", "line");
-  line.append(`${items.length} ${items.length === 1 ? "thing" : "things"} to know before you tick: ${counts}.`);
+  const kinds = new Set(items.map((i) => i.ruleId ?? `ai:${i.key}`)).size;
+  const big = new Set(items.filter((i) => i.severity === "high").map((i) => i.ruleId ?? `ai:${i.key}`)).size;
+  line.append(big ? `${big} big ${big === 1 ? "thing" : "things"} to know before you tick, and ${kinds - big} smaller.` : `${kinds} ${kinds === 1 ? "thing" : "things"} to know before you tick, none of them high risk.`);
   if (deals) line.append(` ${deals} of your dealbreaker${deals === 1 ? " is" : "s are"} in here.`);
   const k = h("p", "k", "Boundary score");
   k.append(h("span", "verdict", label));
   const tally = h("div", "tally");
   for (const [sev, name] of [["high", "High"], ["medium", "Med"], ["low", "Low"]] as const) {
     const cell = h("div");
-    cell.append(h("b", "", String(items.filter((i) => i.severity === sev).length)), h("span", "", name));
+    cell.append(h("b", "", String(new Set(items.filter((i) => i.severity === sev).map((i) => i.ruleId ?? `ai:${i.key}`)).size)), h("span", "", name));
     tally.append(cell);
   }
   summaryEl.append(k, num, line, tally);
@@ -210,6 +211,9 @@ function renderCards(): void {
   cardsEl.replaceChildren();
   advisedKeys = new Set();
   const advised = new Set<string>();
+  const hasHigh = items.some((i) => i.severity === "high");
+  let smaller: HTMLDetailsElement | null = null;
+  let smallerKinds = 0;
   for (const sev of SEVERITIES) {
     // Dealbreakers first, then document order.
     const group = items
@@ -221,13 +225,37 @@ function renderCards(): void {
       if (!advised.has(advice)) advisedKeys.add(item.key);
       advised.add(advice);
     }
+    // One card per kind of point; repeats of the same rule fold under it.
+    const kinds = new Map<string, Item[]>();
+    for (const item of group) {
+      const k = item.ruleId ?? `ai:${item.key}`;
+      kinds.set(k, [...(kinds.get(k) ?? []), item]);
+    }
     const section = h("section", `group sev-${sev}`);
-    section.append(h("h3", "group-title", `${SEVERITY_LABEL[sev]} (${group.length})`), ...group.map(renderCard));
-    cardsEl.append(section);
+    section.append(h("h3", "group-title", `${SEVERITY_LABEL[sev]} (${kinds.size})`));
+    for (const [first, ...rest] of kinds.values()) {
+      section.append(renderCard(first));
+      if (!rest.length) continue;
+      const more = h("details", "more");
+      more.append(h("summary", "", `${rest.length} more ${rest.length === 1 ? "place" : "places"} it says this`), ...rest.map(renderCard));
+      section.append(more);
+    }
+    // High risks show straight away; the rest wait behind one fold, so a long policy isn't a wall of cards.
+    // Your dealbreakers stay in view.
+    if (sev !== "high" && hasHigh && !group.some(isDealbreaker)) {
+      if (!smaller) {
+        smaller = h("details", "smaller");
+        smaller.append(h("summary"));
+        cardsEl.append(smaller);
+      }
+      smallerKinds += kinds.size;
+      smaller.querySelector("summary")!.textContent = `Show ${smallerKinds} smaller ${smallerKinds === 1 ? "point" : "points"}`;
+      smaller.append(section);
+    } else cardsEl.append(section);
   }
 }
 
-const QUOTE_MAX = 160;
+const QUOTE_MAX = 90;
 
 function renderCard(item: Item): HTMLElement {
   const choice = item.ruleId ? prefs[item.ruleId] : undefined;
@@ -244,7 +272,7 @@ function renderCard(item: Item): HTMLElement {
   if (choice === "notok") tags.append(h("span", "badge badge-deal", "Dealbreaker"));
   if (item.ai) tags.append(h("span", "badge badge-ai", "AI · quote checked"));
   // Long quotes are cut to keep cards short; the full sentence is in the document panel and on hover.
-  const quote = h("blockquote", "quote", item.quote.length > QUOTE_MAX ? `${item.quote.slice(0, QUOTE_MAX).trimEnd()}…` : item.quote);
+  const quote = h("blockquote", "quote", clipAround(item.quote, QUOTE_MAX, item.at));
   if (item.quote.length > QUOTE_MAX) quote.title = item.quote;
   card.append(tags, h("p", "say", item.say), quote);
 
@@ -324,6 +352,7 @@ docEl.addEventListener("click", (e) => {
   const key = mark?.dataset.keys?.split(" ")[0];
   const card = key ? document.getElementById(`card-${key}`) : null;
   if (!card) return;
+  for (let d = card.closest("details"); d; d = d.parentElement?.closest("details") ?? null) d.open = true;
   card.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
   flash(card);
 });

@@ -1,6 +1,7 @@
 import { analyze } from "../src/engine.ts";
 import { boundaryScore } from "../src/score.ts";
 import { adviceFor } from "../src/advice.ts";
+import { clipAround } from "../src/clip.ts";
 import type { Category, Flag, Severity } from "../src/types.ts";
 import { badgeFor, compareSeen, flagKey, normalize, originPatterns, plural, pruneSeen, seenKey, textFragmentUrl, watchLine, type Seen } from "./lib.ts";
 
@@ -58,7 +59,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
   money: "Money",
   action: "You can act",
 };
-const QUOTE_MAX = 140;
+const QUOTE_MAX = 90;
 const SELECTION_MIN = 200;
 /** Characters checked per document. Long terms run to about 300,000; this keeps a huge page from stalling the popup. */
 const MAX_TEXT = 500_000;
@@ -353,6 +354,18 @@ function mergedHits(): Hit[] {
   return hits.sort((a, b) => isDeal(a) - isDeal(b) || SEVERITY_RANK[a.flag.severity] - SEVERITY_RANK[b.flag.severity]);
 }
 
+/** Flags grouped by rule, in report order: one group per kind of point. */
+function kindsOf(hits: Hit[]): Hit[][] {
+  const kinds = new Map<string, Hit[]>();
+  for (const hit of hits) kinds.set(hit.flag.ruleId, [...(kinds.get(hit.flag.ruleId) ?? []), hit]);
+  return [...kinds.values()];
+}
+
+/** Shown straight away: high risks and your dealbreakers. */
+function isBig(kind: Hit[]): boolean {
+  return kind[0].flag.severity === "high" || prefs[kind[0].flag.ruleId] === "notok";
+}
+
 /** New since the document was last checked. */
 function isNew({ flag, doc }: Hit): boolean {
   const change = doc.watch?.now.change;
@@ -372,19 +385,31 @@ function render(): void {
 
   const hits = mergedHits();
   setBadge(hits.filter((h) => h.flag.severity === "high").length);
-  main.append(scoreBlock(hits), docList());
-  // Straight under the document list, not after every card, so the button is seen without scrolling.
+  main.append(scoreBlock(hits));
+  // Straight under the score, not after every card, so the button is seen without scrolling.
   if (failed.length > 0) main.append(failedBlock());
-  const flags = el("section", { className: "flags" }, el("h2", { text: plural(hits.length, "flag") }));
+  const flags = el("section", { className: "flags" }, el("h2", { text: "What to look at" }));
   if (hits.length === 0) flags.append(el("p", { className: "muted", text: "Nothing flagged. That doesn't mean it's harmless, so skim it anyway." }));
-  // A rule can fire many times on one page; its Add shows on the first card only.
-  const advised = new Set<string>();
-  for (const hit of hits) {
-    const advice = adviceFor(hit.flag.ruleId, hit.flag.category);
-    flags.append(card(hit, advised.has(advice) ? null : advice));
-    advised.add(advice);
+  // One card per kind, with its Add, and the repeats folded under it. High risks and your dealbreakers show
+  // first; everything else waits behind one "smaller points" fold, so a long policy isn't a wall of cards.
+  const kinds = kindsOf(hits);
+  const big = kinds.filter(isBig);
+  const small = kinds.filter((k) => !isBig(k));
+  const kindBlock = ([first, ...rest]: Hit[]): HTMLElement[] => {
+    const out: HTMLElement[] = [card(first, adviceFor(first.flag.ruleId, first.flag.category))];
+    if (rest.length === 0) return out;
+    const more = el("details", { className: "more" }, el("summary", { text: `${rest.length} more ${rest.length === 1 ? "place" : "places"} it says this` }), ...rest.map((h) => card(h, null)));
+    if (rest.some(isNew)) more.open = true;
+    return [...out, more];
+  };
+  for (const kind of big.length ? big : kinds) flags.append(...kindBlock(kind));
+  if (big.length && small.length) {
+    const rest = el("details", { className: "smaller" }, el("summary", { text: `Show ${small.length} smaller ${small.length === 1 ? "point" : "points"}` }), ...small.flatMap(kindBlock));
+    if (small.some((k) => k.some(isNew))) rest.open = true;
+    flags.append(rest);
   }
-  main.append(flags);
+  // What was read comes last and folded: the cards are what you came for.
+  main.append(flags, docList());
 }
 
 /** The toolbar badge for this tab. The browser clears it when the tab goes to another page. */
@@ -412,9 +437,10 @@ function scoreBlock(hits: Hit[]): HTMLElement {
   const tone = score >= 80 ? "ok" : score >= 50 ? "warn" : "bad";
 
   const tally: Record<Severity, number> = { high: 0, medium: 0, low: 0, info: 0 };
-  for (const h of hits) tally[h.flag.severity]++;
-  const counts = SEVERITIES.filter((s) => tally[s] > 0).map((s) => `${tally[s]} ${SEVERITY_LABEL[s].toLowerCase()}`).join(", ");
-  const line = el("p", { className: "line", text: hits.length === 0 ? "Nothing flagged." : `${plural(hits.length, "thing")} to know before you tick: ${counts}.` });
+  for (const [first] of kindsOf(hits)) tally[first.flag.severity]++; // kinds of point, not repeats
+  const kinds = kindsOf(hits);
+  const big = kinds.filter(isBig).length;
+  const line = el("p", { className: "line", text: hits.length === 0 ? "Nothing flagged." : big ? `${big} big ${big === 1 ? "thing" : "things"} to know before you tick, and ${kinds.length - big} smaller.` : `${plural(kinds.length, "thing")} to know before you tick, none of them high risk.` });
   const deals = new Set(hits.filter((h) => prefs[h.flag.ruleId] === "notok").map((h) => h.flag.ruleId)).size;
   if (deals > 0) line.append(` ${deals} of your dealbreaker${deals === 1 ? " is" : "s are"} in here.`);
   const fresh = hits.filter(isNew).length;
@@ -422,7 +448,8 @@ function scoreBlock(hits: Hit[]): HTMLElement {
 
   const k = el("p", { className: "k", text: "Boundary score" }, el("span", { className: "verdict", text: label }));
   const tallyRow = el("p", { className: "tally" });
-  for (const [sev, short] of [["high", "High"], ["medium", "Med"], ["low", "Low"]] as const) {
+  for (const [sev, short] of [["high", "High"], ["medium", "Med"], ["low", "Low"], ["info", "Info"]] as const) {
+    if (sev === "info" && tally.info === 0) continue;
     tallyRow.append(el("span", {}, el("b", { text: String(tally[sev]) }), short));
   }
 
@@ -438,16 +465,20 @@ function scoreBlock(hits: Hit[]): HTMLElement {
 
 function docList(): HTMLElement {
   const list = el("ul", { className: "docs" });
+  let open = false;
   for (const doc of docs) {
     const text = el("span", { className: "link-text" }, el("strong", { text: doc.name }), el("small", { text: shortUrl(doc.url) }));
     if (doc.watch) {
       const { text: line, changed } = watchLine(doc.watch.prev, doc.watch.now, Date.now());
       text.append(el("small", { className: changed ? "watch changed" : "watch", text: line }));
+      open ||= changed;
     }
     if (doc.cut) text.append(el("small", { className: "watch", text: `Very long: only the first ${MAX_TEXT.toLocaleString("en")} characters were checked` }));
     list.append(el("li", {}, text, el("span", { className: "doc-count", text: plural(doc.flags.length, "flag") })));
   }
-  return el("section", {}, el("h2", { text: `Checked ${plural(docs.length, "document")}` }), list);
+  const box = el("details", { className: "read" }, el("summary", {}, el("h2", { text: `Checked ${plural(docs.length, "document")}` })), list);
+  box.open = open; // a document that changed since last time is worth seeing
+  return box;
 }
 
 function card(hit: Hit, advice: string | null): HTMLElement {
@@ -466,15 +497,15 @@ function card(hit: Hit, advice: string | null): HTMLElement {
   if (pref === "notok") meta.prepend(el("span", { className: "badge", text: "Dealbreaker" }));
 
   const quoteText = normalize(flag.quote);
-  const quote = el("blockquote", { className: "quote", text: clip(quoteText, QUOTE_MAX) });
+  const quote = el("blockquote", { className: "quote", text: clipAround(quoteText, QUOTE_MAX, flag.at) });
   if (quoteText.length > QUOTE_MAX) quote.title = quoteText;
 
 
   const actions = el(
     "div",
     { className: "actions" },
-    toggle("OK", "choice-ok", pref === "ok", () => setPref(flag.ruleId, "ok")),
-    toggle("Not OK", "choice-notok", pref === "notok", () => setPref(flag.ruleId, "notok")),
+    toggle("OK", "choice-ok", pref === "ok", () => setPref(flag.ruleId, "ok"), "Fine with me"),
+    toggle("Not OK", "choice-notok", pref === "notok", () => setPref(flag.ruleId, "notok"), "A dealbreaker: lowers the score, and stays marked on every site you check"),
   );
   const show = showButton(flag, doc);
   if (show) actions.append(show);
@@ -598,7 +629,10 @@ function shortUrl(href: string): string {
 }
 
 function clip(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.-]+$/, "")}…`;
 }
 
 function plainButton(label: string, onClick: () => void): HTMLButtonElement {
@@ -608,8 +642,9 @@ function plainButton(label: string, onClick: () => void): HTMLButtonElement {
   return b;
 }
 
-function toggle(label: string, className: string, pressed: boolean, onClick: () => void): HTMLButtonElement {
+function toggle(label: string, className: string, pressed: boolean, onClick: () => void, hint: string): HTMLButtonElement {
   const b = plainButton(label, onClick);
+  b.title = hint;
   b.className = `choice ${className}`;
   b.setAttribute("aria-pressed", String(pressed));
   return b;

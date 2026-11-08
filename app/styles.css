@@ -151,6 +151,9 @@ footer { padding: 18px 0 32px; border-top: 1px solid var(--rule); color: var(--m
 
 @keyframes mark-flash { 0%, 35% { background: var(--flash); box-shadow: 0 0 0 3px var(--flash); } 100% { box-shadow: 0 0 0 3px transparent; } }
 @keyframes card-flash { 0%, 35% { background: color-mix(in srgb, var(--lime) 60%, transparent); } 100% { background: transparent; } }
+.smaller > summary { margin-top: 18px; padding: 16px 0; font: 700 18px/1.2 var(--serif); cursor: pointer; border-top: 1px solid var(--fg); border-bottom: 1px solid var(--rule); }
+.more > summary { padding: 12px 0; font: 600 13px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 1px solid var(--rule); }
+.more[open] > summary { color: var(--fg); }
 .card.flash { animation: card-flash 1.6s ease-out; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

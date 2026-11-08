@@ -319,6 +319,9 @@ async function demo(port: number): Promise<number> {
   await moveTo(s, `document.querySelector("#cards .card .moves dd")`);
   await sleep(1800);
 
+  // Smaller points are folded; open them to reach the sharing card.
+  await clickOn(s, `document.querySelector("#cards .smaller > summary")`);
+  await sleep(900);
   const share = `[...document.querySelectorAll("#cards .card")].find((c) => /share your data/.test(c.querySelector(".say")?.textContent ?? ""))`;
   caption("You set your own boundaries. Not OK makes a point a dealbreaker.");
   await scrollTo(s, share, 150);
@@ -508,6 +511,9 @@ async function demoShort(port: number): Promise<number> {
   await sleep(1500);
   await shot(s, "app-flag.png");
 
+  // Smaller points are folded; open them to reach the sharing card.
+  await clickOn(s, `document.querySelector("#cards .smaller > summary")`);
+  await sleep(900);
   const share = `[...document.querySelectorAll("#cards .card")].find((c) => /share your data/.test(c.querySelector(".say")?.textContent ?? ""))`;
   caption("Mark it Not OK, and the score drops.");
   await scrollTo(s, share, 150);
