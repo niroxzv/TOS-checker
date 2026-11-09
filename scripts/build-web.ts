@@ -50,6 +50,9 @@ function copyTree(from: string, to: string, isTargetRoot: boolean, skip: Set<str
       cpSync(path, join(to, name));
     } else if (isTargetRoot || !NODE_ONLY.has(name)) {
       const js = rewriteImports(stripTypeScriptTypes(readFileSync(path, "utf8")), isTargetRoot);
+      // A file of types only (src/types.ts) strips down to comments and blank lines, and nothing imports it
+      // at run time, so it isn't shipped: add-on reviewers ask for no unused files.
+      if (!js.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "").trim()) continue;
       writeFileSync(join(to, name.replace(/\.ts$/, ".js")), js);
     }
   }

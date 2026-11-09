@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { badgeFor, compareSeen, dayLabel, flagKey, hash, originPatterns, pruneSeen, seenKey, textFragmentUrl, watchKey, watchLine, type Seen } from "../extension/lib.ts";
+import { badgeFor, compareSeen, dayLabel, flagKey, hash, originPatterns, pruneSeen, readCapped, sameOrigin, seenKey, textFragmentUrl, watchKey, watchLine, type Seen } from "../extension/lib.ts";
 
 const DAY = 86_400_000;
 const NOW = new Date(2026, 10, 7, 15, 0).getTime();
@@ -118,5 +118,52 @@ describe("badgeFor", () => {
     assert.equal(badgeFor(1).title, "Tickwise: 1 high-risk flag here. Click to see them.");
     assert.equal(badgeFor(0).text, "");
     assert.equal(badgeFor(120).text, "99+");
+  });
+});
+
+describe("readCapped", () => {
+  test("reads a small answer whole", async () => {
+    assert.equal(await readCapped(new Response("<p>Terms</p>"), 1000), "<p>Terms</p>");
+  });
+  test("stops an endless answer near the limit instead of reading it all", async () => {
+    let pulls = 0;
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new TextEncoder().encode("x".repeat(1000)));
+      },
+    });
+    const text = await readCapped(new Response(endless), 5000);
+    assert.equal(text.length, 5000);
+    assert.ok(pulls < 10, `${pulls} chunks read`);
+  });
+  test("keeps a character split across chunks", async () => {
+    const bytes = new TextEncoder().encode("café");
+    const split = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes.slice(0, 4));
+        controller.enqueue(bytes.slice(4));
+        controller.close();
+      },
+    });
+    assert.equal(await readCapped(new Response(split), 1000), "café");
+  });
+  test("an empty answer is empty text", async () => {
+    assert.equal(await readCapped(new Response(null), 1000), "");
+  });
+});
+
+describe("sameOrigin", () => {
+  test("same scheme, host and port", () => {
+    assert.equal(sameOrigin("https://example.com/privacy", "https://example.com/signup?x=1"), true);
+  });
+  test("another host, scheme or port is another site", () => {
+    assert.equal(sameOrigin("https://legal.example.com/terms", "https://example.com/signup"), false);
+    assert.equal(sameOrigin("http://example.com/terms", "https://example.com/signup"), false);
+    assert.equal(sameOrigin("https://example.com:8443/terms", "https://example.com/signup"), false);
+  });
+  test("pages without a real origin never match", () => {
+    assert.equal(sameOrigin("file:///C:/terms.html", "file:///C:/signup.html"), false);
+    assert.equal(sameOrigin("not a url", "https://example.com/"), false);
   });
 });

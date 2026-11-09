@@ -29,13 +29,13 @@ Publishing on addons.mozilla.org (AMO) is free. Mozilla signs the add-on, and Fi
 3. Sign in at https://addons.mozilla.org/developers/ with a Mozilla account (free) and choose **Submit a New Add-on**.
 4. Pick **On this site** to list it publicly, or **On your own** to get a signed `.xpi` that only you install.
 5. Upload `tickwise-firefox.zip`. AMO's validator runs on it.
-6. When asked whether the build used a generator or transpiler, say yes and upload `tickwise-source.zip`. Build notes for the reviewer: "Node 22.18 or newer, no npm install needed. Run `npm run build`; the add-on is in `dist/firefox`. `src/model-weights.ts` holds the weights of a logistic-regression model trained by `eval/train-model.py`."
+6. When asked whether the build used a generator or transpiler, say yes and upload `tickwise-source.zip`. Build notes for the reviewer: "Node 22.18 or newer (built with Node 24.16.0), no npm install needed. Run `npm run build`; the add-on is in `dist/firefox`. `src/model-weights.ts` holds the weights of a logistic-regression model trained by `eval/train-model.py`."
 7. Fill in the listing (name, summary, category, screenshots from `docs/screenshots/`) and submit.
 
 Things to check before submitting:
 
 - **Add-on ID.** `extension/manifest.firefox.json` sets it to `tickwise@niroxzv`. It can't change after the first upload, so change it first if you want a different one.
-- **Data collection.** The same file declares `"data_collection_permissions": { "required": ["none"] }`, meaning the add-on sends nothing to its developer or anyone else. That matches the code: it has no server, and the only requests it makes are for up to 8 legal-looking pages linked from the page you're checking, sent without cookies (see "Linked pages" below). It's still your declaration to Mozilla, so read it before you submit.
+- **Data collection.** The same file declares `"data_collection_permissions": { "required": ["none"] }`, meaning the add-on sends nothing to its developer or anyone else. That matches the code: it has no server, and the only requests it makes are for up to 8 legal-looking pages linked from the page you're checking: pages on the same site when you click the icon, pages on other sites only after you click Allow, all sent without cookies or a referrer (see "Linked pages" below). It's still your declaration to Mozilla, so read it before you submit.
 - **Version.** Each upload needs a higher `version` in `extension/manifest.json`.
 
 #### Just for yourself ("On your own")
@@ -46,15 +46,16 @@ How Tickwise meets the policies, checked against them on 9 November 2026:
 
 | Policy | Tickwise |
 |---|---|
-| 3.1 Reviewable source | Type-stripped, not minified or obfuscated; `tickwise-source.zip` and the build notes above. No third-party libraries. Fonts are under the SIL Open Font License (`fonts/OFL-LICENSE.txt`). |
+| 3.1 Reviewable source | Type-stripped, not minified or obfuscated; `tickwise-source.zip` and the build notes above. No third-party libraries. Fonts (Redaction, MCKL; IBM Plex Mono, IBM) are under the SIL Open Font License, with both copyright notices in `fonts/OFL-LICENSE.txt`. |
 | 4 Only needed permissions | `activeTab` and `scripting` read the page you click on, `storage` keeps your Not OK choices. Other sites are optional, asked for one at a time when you click Allow. |
-| 4 No remote code | Everything is bundled. |
-| 6 Data transmission | Nothing is sent to the developer or anyone else. The only requests are for terms pages linked from the page, without cookies, when you click the icon. Declared as `"none"`. |
+| 4 No remote code | Everything is bundled. Fetched pages are parsed as inert HTML (`DOMParser`, nothing runs) and shown only as text. |
+| 4 Performance | Each linked page is read up to 3 MB and 10 seconds, then cut off. Nothing runs in the background. |
+| 6 Data transmission | Nothing is sent to the developer or anyone else. The only requests are for terms pages linked from the page, without cookies or a referrer: same-site ones when you click the icon, other sites only after you click Allow for that site. Declared as `"none"`. |
 | 6.3 Private browsing | In a private window, Tickwise doesn't save which sites you checked. |
 
 Notes for the reviewer (paste into the "Notes to reviewer" box):
 
-> Personal-use add-on, self-distributed. Build: Node 22.18 or newer, no npm install needed; run `npm run build`, the add-on is in `dist/firefox`. The build only strips TypeScript types (`scripts/build-web.ts`). `src/model-weights.ts` is data: the weights of a logistic-regression model trained by `eval/train-model.py`. No data is collected or sent; the only network requests are for legal pages linked from the current page, without cookies, after the user clicks the toolbar button. Other sites are read only after the user grants that one site through the Allow button (optional host permissions).
+> Personal-use add-on, self-distributed. Build: Node 22.18 or newer (built with Node 24.16.0), no npm install needed; run `npm run build`, the add-on is in `dist/firefox`. The build only strips TypeScript types (`scripts/build-web.ts`). `src/model-weights.ts` is data: the weights of a logistic-regression model trained by `eval/train-model.py`. No data is collected or sent; the only network requests are for legal pages linked from the current page, without cookies or a referrer, after the user clicks the toolbar button. Only same-site links are requested on that click; another site gets no request until the user grants that one site through the Allow button (optional host permissions).
 
 ### Edge or Chrome (about one minute)
 
@@ -71,8 +72,8 @@ After changing the code, run `npm run build` again and click **Reload** on the e
 
 - **This page**: reads the visible text of the tab when you click the icon (`activeTab` + `scripting`; no background script).
 - **Selected text**: if you selected more than 200 characters, that's checked as its own document and listed first.
-- **Linked pages**: up to 8 links that look like Terms, Privacy, Cookie or legal pages are fetched from inside the page, so pages on the same site need no extra permission. They're fetched without cookies: a terms page doesn't need your login, and a link that does something when opened (say, "Accept cookies") does nothing logged out. Links to your own machine or home network (`localhost`, `192.168.x.x`, `.local` names and similar) are skipped, unless the page you're on is on one too.
-- **Other sites**: the request to a link on another origin is still sent, but the browser usually won't let the page read the answer. (It can, when that site lets any website read it with `Access-Control-Allow-Origin: *`.) Unread links are listed under "Linked pages we couldn't read" with an **Allow reading N more pages** button, which asks for those origins (`optional_host_permissions`). Once you allow an origin, it's read straight away every time, also without cookies.
+- **Linked pages**: up to 8 links that look like Terms, Privacy, Cookie or legal pages are found. The ones on the same site are fetched from inside the page, so they need no extra permission (a redirect to another site is stopped before it's sent). Each page is read up to 3 MB and 10 seconds. They're fetched without cookies or a referrer: a terms page doesn't need your login, and a link that does something when opened (say, "Accept cookies") does nothing logged out. Links to your own machine or home network (`localhost`, `192.168.x.x`, names with no dot, `.local`, `.lan` names and similar) are skipped, unless the page you're on is on one too.
+- **Other sites**: nothing is sent to a link on another origin until you allow it, so that site doesn't learn which page you're on. Those links are listed under "Linked pages we couldn't read" with an **Allow reading N more pages** button, which asks for those origins (`optional_host_permissions`). Once you allow an origin, it's read straight away every time, also without cookies.
   - In Edge and Chrome the popup closes when the browser's prompt opens: accept it, then click the icon again. In Firefox the popup stays open and reads the page as soon as you accept.
   - For a plain-http link it asks for that site over http and https, because Firefox sends the extension's request over https (`upgrade-insecure-requests` in its default extension policy). So in Firefox, a terms page on another site that only works over plain http can't be read this way.
 - **Very long pages**: each document is checked up to its first 500,000 characters (long terms run to about 300,000), and the list says when one was cut.
@@ -100,10 +101,10 @@ Both use no dependencies. On Windows, run them from PowerShell or cmd. Edge laun
 
 1. Serves a fictional sign-up page ("Snapnest") at `snapnest.test`, with its Privacy Policy on the same origin and its Cookie Policy on `legal.snapnest.test`. Both names point at 127.0.0.1 through `--host-resolver-rules`.
 2. Starts headless Edge with a throwaway profile (deleted afterwards), and talks to it over `--remote-debugging-pipe` with `--enable-unsafe-extension-debugging`. It loads `dist/extension` with `Extensions.loadUnpacked`.
-3. Clicks the toolbar button with `Extensions.triggerAction` (a real action click, so `activeTab` applies), attaches to the popup and checks the report. Then it clicks **Allow**, **Not OK**, **Show on page** and **Open and show**, selects text, changes the Privacy Policy between visits, and opens a browser page. The site sets a login cookie, so the test can check that linked pages are fetched without it, and the footer links to `router.local`, which must be skipped.
+3. Clicks the toolbar button with `Extensions.triggerAction` (a real action click, so `activeTab` applies), attaches to the popup and checks the report. Then it clicks **Allow**, **Not OK**, **Show on page** and **Open and show**, selects text, changes the Privacy Policy between visits, and opens a browser page. The site sets a login cookie, so the test can check that linked pages are fetched without it, and the footer links to `router.local`, which must be skipped. It also checks that nothing is requested from the other site before Allow.
 4. Saves the screenshots in `docs/screenshots/`.
 
-It passes 51 of 51 checks in Edge 157 and in Chrome for Testing 157.0.8103.38 (8 Nov 2026). The Chrome run used [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/), Google's Chrome build for automated tests. To repeat it, unzip it and set `BROWSER` to its `chrome.exe`.
+It passes 53 of 53 checks in Edge (9 Nov 2026). On 8 Nov, Edge 157 and Chrome for Testing 157.0.8103.38 passed the 51 checks it had then. The Chrome run used [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/), Google's Chrome build for automated tests. To repeat it, unzip it and set `BROWSER` to its `chrome.exe`.
 
 Options: `BROWSER=<path to msedge.exe or chrome.exe>`, `PROFILE_DIR=<folder>` to use a profile folder of your own (kept afterwards; never point it at your real browser profile), `HEADED=1` to watch, `NO_SHOTS=1` to skip screenshots. It exits with code 1 if any check fails.
 
@@ -120,6 +121,8 @@ Firefox 159 sometimes never finishes starting with a new profile (WebDriver BiDi
 
 ## Tested on
 
+**9 November 2026, after linked pages on other sites stopped being requested before Allow: Edge 53 of 53, Firefox 9 of 9.** The new check: no request reaches the other site (`legal.snapnest.test`) until Allow.
+
 **Microsoft Edge 157.0.4341.42, Windows 11, headless, 8 November 2026: 51 of 51 checks pass.**
 
 Verified in the real browser:
@@ -134,7 +137,7 @@ Verified in the real browser:
 - Selected text (410 characters) becomes the first document, and its flags say "From: Selected text".
 - Changes: the first check says "First check" for each document, the next says "No change since you checked today". After the Privacy Policy drops one flagged sentence and adds one, it says "Changed since you checked today: 1 new flag, 1 gone", the new flag (AI training) is the only one marked New, and the score line says "1 is new since you last checked." Storage holds hashes, not the page addresses.
 - On `edge://version` the popup shows "Can't read this page."
-- Cookies: the site sets a login cookie, and all 12 fetches of linked pages (from the page and from the popup) go out without it, while opening a page in a tab still sends it. With `credentials: "omit"` taken out of the built popup, Edge sent the cookie on every one of those fetches, including to the allowed site, so the check does catch it.
+- Cookies: the site sets a login cookie, and all 12 fetches of linked pages (from the page and from the popup) go out without it (8 on 9 November, since the other site is no longer asked before Allow), while opening a page in a tab still sends it. With `credentials: "omit"` taken out of the built popup, Edge sent the cookie on every one of those fetches, including to the allowed site, so the check does catch it.
 - A footer link to `router.local` (your own network) is skipped: never requested, never listed.
 
 **Firefox 159.0.1 (Microsoft Store build), Windows 11, headless, 8 November 2026: 9 of 9 checks pass.**
@@ -143,7 +146,7 @@ Verified in the real browser:
 - The toolbar action opens the popup with the same report as in Edge (score 26, 19 flags on the first check), reads this page and the Privacy Policy, and lists the Cookie Policy for Allow.
 - The badge shows 4, with its tooltip.
 - Show on page highlights the arbitration sentence with Firefox's CSS Custom Highlight API and scrolls it into view.
-- No errors from the add-on. Firefox logs the blocked cross-origin read of the Cookie Policy, which is expected, since that page waits for Allow.
+- No errors from the add-on. (Before 9 November, Firefox logged a blocked cross-origin read of the Cookie Policy; it's no longer requested before Allow.)
 
 **Step-by-step checks in Firefox 159.0.1 and Chrome for Testing 157, 8 November 2026.** Each step was run from a script (browsers can't be clicked with a real mouse in this setup), and the screenshots were checked by eye.
 

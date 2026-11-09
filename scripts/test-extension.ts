@@ -519,6 +519,7 @@ async function run(port: number, signupUrl: string, setPrivacy: (version: number
   check("each Add shows once, on the first card of its kind", adds.length > 0 && new Set(adds).size === adds.length, `${adds.length} Adds on ${r.cards.length} cards`);
   check("every flag has Not OK (and no OK)", r.cards.every((c: any) => c.buttons === "Not OK"));
   check("cross-origin Cookie Policy is listed as unread", r.failed.join() === "Cookie Policy", r.failed.join());
+  check("nothing is requested from the other site before Allow", !served.some((s) => s.host === LEGAL), served.filter((s) => s.host === LEGAL).map((s) => s.path).join(", "));
   check("'Allow reading 1 more page' button is shown", r.allow.includes("Allow reading 1 more page"), r.allow.join());
   check("non-legal links are not fetched", !served.some((s) => s.path === "/help" || s.path === "/features"));
   check("a link to your own network (router.local) is skipped", !served.some((s) => s.host === "router.local") && !r.failed.includes("Cookie settings"), r.failed.join());

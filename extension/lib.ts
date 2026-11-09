@@ -136,6 +136,39 @@ export function originPatterns(href: string): string[] {
   return url.protocol === "http:" ? [`http://${url.host}/*`, `https://${url.host}/*`] : [`${url.origin}/*`];
 }
 
+/** Same scheme, host and port, so the page can read it without asking. False for anything that isn't a URL. */
+export function sameOrigin(href: string, pageUrl: string): boolean {
+  try {
+    const a = new URL(href);
+    return a.origin !== "null" && a.origin === new URL(pageUrl).origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A response's text, read up to about `max` bytes and then cut off, so a huge or endless answer can't fill the
+ * popup's memory. (`res.text()` would read all of it first.)
+ */
+export async function readCapped(res: Response, max: number): Promise<string> {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let bytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    text += decoder.decode(value, { stream: true });
+    if (bytes >= max) {
+      reader.cancel().catch(() => {});
+      break;
+    }
+  }
+  return text + decoder.decode();
+}
+
 /** The toolbar badge after a check: the number of high-risk flags, in coral. */
 export function badgeFor(high: number): { text: string; title: string } {
   if (high === 0) return { text: "", title: "Tickwise: no high-risk flags here. Click to see the rest." };

@@ -1,3 +1,9 @@
+## Fonts in this folder
+
+Redaction (redaction-*.woff2): Copyright 2019 MCKL Inc. Licensed under the SIL Open Font License, Version 1.1 (below).
+
+IBM Plex Mono (IBMPlexMono-*.woff2): Copyright 2017 IBM Corp. with Reserved Font Name "Plex". Licensed under the SIL Open Font License, Version 1.1 (below).
+
 ## License
 
 Copyright 2019 MCKL Inc.

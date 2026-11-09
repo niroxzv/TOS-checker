@@ -4,7 +4,7 @@ import { adviceFor } from "../src/advice.ts";
 import { clipAround } from "../src/clip.ts";
 import { kindOf, kindSay, rulesOfKind } from "../src/kinds.ts";
 import type { Category, Flag, Severity } from "../src/types.ts";
-import { badgeFor, compareSeen, flagKey, normalize, originPatterns, plural, pruneSeen, seenKey, textFragmentUrl, watchLine, type Seen } from "./lib.ts";
+import { badgeFor, compareSeen, flagKey, normalize, originPatterns, plural, pruneSeen, readCapped, sameOrigin, seenKey, textFragmentUrl, watchLine, type Seen } from "./lib.ts";
 
 /** Firefox has `browser` (promises everywhere); Chrome and Edge have `chrome`. */
 const ext: any = (globalThis as any).browser ?? (globalThis as any).chrome;
@@ -91,14 +91,18 @@ let highlightCss = false;
 function grabPage(): PageData {
   const LOOKS_LEGAL = /terms|conditions|privacy|cookie|eula|legal|\btos\b/i;
   // Your own machine and home network: a website shouldn't get Tickwise to open your router's pages.
-  const LOCAL = /^(?:localhost|.+\.localhost|.+\.local|.+\.internal|.+\.home\.arpa|0\.0\.0\.0|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|169\.254\.\d+\.\d+|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+|\[.*\])$/i;
-  const pageIsLocal = LOCAL.test(location.hostname);
+  // The browser has already turned decimal, hex and octal addresses (http://2130706433/) into 127.0.0.1.
+  // A name with no dot (http://router/) is a machine on your own network, and so are the names home routers use.
+  const LOCAL = /^(?:[^.]+|.+\.(?:localhost|local|internal|home\.arpa|localdomain|lan|home|corp)|0\.\d+\.\d+\.\d+|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|169\.254\.\d+\.\d+|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d+\.\d+|\[.*\])$/i;
+  // "localhost." with a final dot is the same machine as "localhost".
+  const isLocal = (host: string) => LOCAL.test(host.replace(/\.$/, ""));
+  const pageIsLocal = isLocal(location.hostname);
   const here = location.href.split("#")[0];
   const seen = new Set<string>();
   const links: PageLink[] = [];
   for (const a of Array.from(document.querySelectorAll("a[href]"))) {
     if (!(a instanceof HTMLAnchorElement) || !/^https?:$/.test(a.protocol)) continue;
-    if (!pageIsLocal && LOCAL.test(a.hostname)) continue;
+    if (!pageIsLocal && isLocal(a.hostname)) continue;
     const href = a.href.split("#")[0];
     if (href === here || seen.has(href)) continue;
     const text = (a.textContent || "").replace(/\s+/g, " ").trim();
@@ -119,20 +123,36 @@ function grabPage(): PageData {
 }
 
 /**
- * Also runs inside the page, so it must be self-contained. Fetching from the page works with no extra
- * permissions for same-origin links and for sites that allow any origin (docs.github.com does). Other
- * sites refuse, and the browser logs a CORS error in the page's console; those links go to the "Allow
- * reading" list. Returns the body for text responses, null for anything that failed.
+ * Also runs inside the page, so it must be self-contained. Reads links on the page's own site, which needs
+ * no extra permission; start() never passes links to other sites. Mode "same-origin" also stops a same-site
+ * link that redirects to another site before that request is sent, so no other site learns which page you're
+ * on until you click Allow. Returns the body for text responses, null for anything that failed.
  */
 async function fetchInPage(urls: string[]): Promise<(string | null)[]> {
+  const MAX = 3000000; // MAX_HTML: this function can't see constants outside it
   return Promise.all(
     urls.map(async (url) => {
       try {
         // No cookies, as in readFromPopup.
-        const res = await fetch(url, { credentials: "omit", signal: AbortSignal.timeout(10000) });
+        const res = await fetch(url, { mode: "same-origin", credentials: "omit", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(10000) });
         const type = res.headers.get("content-type") || "";
-        if (!res.ok || !type.startsWith("text/")) return null;
-        return (await res.text()).slice(0, 3000000); // MAX_HTML: this function can't see constants outside it
+        if (!res.ok || !type.startsWith("text/") || !res.body) return null;
+        // Stop reading at MAX bytes, so a huge or endless answer can't fill memory. Same as readCapped in lib.ts.
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let text = "";
+        let bytes = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          bytes += value.byteLength;
+          text += decoder.decode(value, { stream: true });
+          if (bytes >= MAX) {
+            reader.cancel().catch(() => {});
+            break;
+          }
+        }
+        return text + decoder.decode();
       } catch {
         return null;
       }
@@ -228,15 +248,21 @@ async function start(): Promise<void> {
 
   if (page.links.length > 0) {
     status(`Reading ${plural(page.links.length, "linked page")}…`);
+    // Only links on this page's own site are read from the page. Links to other sites wait for Allow, so
+    // nothing is sent to them until you say so (and the page's console gets no blocked-request errors).
+    const own = page.links.filter((l) => sameOrigin(l.href, page!.url));
     let bodies: (string | null)[] = [];
-    try {
-      const results = await ext.scripting.executeScript({ target: { tabId }, func: fetchInPage, args: [page.links.map((l) => l.href)] });
-      bodies = (results && results[0] && results[0].result) || [];
-    } catch {
-      // Treat every link as failed; the permission button can still fetch them.
+    if (own.length > 0) {
+      try {
+        const results = await ext.scripting.executeScript({ target: { tabId }, func: fetchInPage, args: [own.map((l) => l.href)] });
+        bodies = (results && results[0] && results[0].result) || [];
+      } catch {
+        // Treat every link as failed; the permission button can still fetch them.
+      }
     }
-    page.links.forEach((link, i) => {
-      const html = bodies[i];
+    page.links.forEach((link) => {
+      const i = own.indexOf(link);
+      const html = i === -1 ? null : bodies[i];
       if (typeof html === "string") addDoc(link.text, link.href, htmlToText(html), false, true);
       else failed.push(link);
     });
@@ -267,10 +293,11 @@ async function readFromPopup(links: PageLink[]): Promise<void> {
     links.map(async (link) => {
       try {
         // No cookies: a terms page doesn't need your login, and a link that does something when visited does nothing logged out.
-        const res = await fetch(link.href, { credentials: "omit", signal: AbortSignal.timeout(10000) });
+        // No referrer either: the site you allowed doesn't need to know where its link was.
+        const res = await fetch(link.href, { credentials: "omit", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(10000) });
         const type = res.headers.get("content-type") || "";
         if (!res.ok || !type.startsWith("text/")) return;
-        addDoc(link.text, link.href, htmlToText((await res.text()).slice(0, MAX_HTML)), false, true);
+        addDoc(link.text, link.href, htmlToText(await readCapped(res, MAX_HTML)), false, true);
         failed = failed.filter((l) => l !== link);
       } catch {
         // Still failed; it stays in the list.
