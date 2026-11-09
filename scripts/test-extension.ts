@@ -517,7 +517,7 @@ async function run(port: number, signupUrl: string, setPrivacy: (version: number
   const adds = r.cards.filter((c: any) => c.advice).map((c: any) => c.addText);
   check("a flag has at most one Add", r.cards.every((c: any) => c.advice === "" || c.advice === "Add"));
   check("each Add shows once, on the first card of its kind", adds.length > 0 && new Set(adds).size === adds.length, `${adds.length} Adds on ${r.cards.length} cards`);
-  check("every flag has OK / Not OK", r.cards.every((c: any) => c.buttons === "OK/Not OK"));
+  check("every flag has Not OK (and no OK)", r.cards.every((c: any) => c.buttons === "Not OK"));
   check("cross-origin Cookie Policy is listed as unread", r.failed.join() === "Cookie Policy", r.failed.join());
   check("'Allow reading 1 more page' button is shown", r.allow.includes("Allow reading 1 more page"), r.allow.join());
   check("non-legal links are not fetched", !served.some((s) => s.path === "/help" || s.path === "/features"));
@@ -581,15 +581,6 @@ async function run(port: number, signupUrl: string, setPrivacy: (version: number
   r = await readReport(b.sessionId);
   check("clicking Not OK again clears it", !r.cards.some((x: any) => x.dealbreaker) && r.score === scoreBefore, `${r.score}`);
 
-  // OK marks the button (tick, lime) and leaves the card readable: no fade.
-  await click(b.sessionId, ".card:first-of-type button", "OK");
-  const okState = await evaluate(b.sessionId, `(() => {
-    const c = document.querySelector(".card"), btn = c.querySelector(".choice-ok");
-    return { pressed: btn.getAttribute("aria-pressed"), opacity: getComputedStyle(c).opacity, tick: getComputedStyle(btn, "::before").content };
-  })()`);
-  check("OK is pressed without fading the card", okState.pressed === "true" && okState.opacity === "1" && okState.tick.includes("✓"), JSON.stringify(okState));
-  if (process.env.OK_SHOT) await snapshot(b.sessionId, "extension-popup-ok.png");
-  await click(b.sessionId, ".card:first-of-type button", "OK");
   check("reopen: each document says there's no change", r.docs.every((x: any) => x.watch === "No change since you checked today"), r.docs.map((x: any) => x.watch).join(" | "));
 
   // Show on page: highlights the sentence in the tab and scrolls it into view, here inside the scrolling terms box.

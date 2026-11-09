@@ -8,7 +8,7 @@ test("the jury / class-action waiver shares the arbitration card", () => {
   assert.equal(kindOf("sells_data"), "sells_data");
 });
 
-test("OK / Not OK on the card covers both rules", () => {
+test("Not OK on the card covers both rules", () => {
   assert.deepEqual(rulesOfKind("class_action_waiver"), ["arbitration", "class_action_waiver"]);
   assert.deepEqual(rulesOfKind("sells_data"), ["sells_data"]);
 });

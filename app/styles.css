@@ -126,8 +126,6 @@ button.primary:hover { background: var(--ink-2); color: var(--bg); }
 .moves dt { color: var(--muted); padding-top: 12px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .choice { min-height: 40px; font-size: 15px; padding: 0 18px; }
-.choice-ok[aria-pressed="true"] { background: var(--lime); color: #141413; }
-.choice-ok[aria-pressed="true"]::before { content: "\2713\00A0"; }
 .choice-notok[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #141413; }
 
 .ai-box { margin-bottom: 28px; padding: 22px 26px; border-radius: 12px; background: var(--card); }

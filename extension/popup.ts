@@ -521,7 +521,6 @@ function card(hit: Hit, advice: string | null, say = hit.flag.say): HTMLElement 
   const actions = el(
     "div",
     { className: "actions" },
-    toggle("OK", "choice-ok", pref === "ok", () => setPref(flag.ruleId, "ok"), "Fine with me"),
     toggle("Not OK", "choice-notok", pref === "notok", () => setPref(flag.ruleId, "notok"), "A dealbreaker: lowers the score, and stays marked on every site you check"),
   );
   const show = showButton(flag, doc);

@@ -106,9 +106,7 @@ button:hover { background: var(--paper); }
 button:disabled { opacity: .5; cursor: default; }
 button.primary { margin: 8px 0; background: var(--fg); color: var(--bg); }
 button.primary:hover { opacity: .88; }
-.choice-ok[aria-pressed="true"] { background: var(--lime); color: #141413; }
-.choice-ok[aria-pressed="true"]::before { content: "\2713\00A0"; }
-/* Goes to the sentence: set apart from the two choices, and quieter. */
+/* Goes to the sentence: set apart from Not OK, and quieter. */
 button.show { margin-left: auto; border-color: var(--rule); }
 button.show:hover { border-color: var(--fg); }
 .choice-notok[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #141413; }

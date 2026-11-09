@@ -296,7 +296,8 @@ function renderCard(item: Item): HTMLElement {
   const ruleId = item.ruleId;
   if (ruleId) {
     const actions = h("div", "actions");
-    const options: [Choice, string][] = [["ok", "OK"], ["notok", "Not OK"]];
+    // OK only lit up and changed nothing, so it's gone: Not OK is the one choice that does something.
+    const options: [Choice, string][] = [["notok", "Not OK"]];
     for (const [value, label] of options) {
       const btn = button(label, `choice choice-${value}`, () => setPref(ruleId, value, item.key));
       btn.setAttribute("aria-pressed", String(choice === value));
