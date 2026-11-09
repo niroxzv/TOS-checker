@@ -38,6 +38,24 @@ Things to check before submitting:
 - **Data collection.** The same file declares `"data_collection_permissions": { "required": ["none"] }`, meaning the add-on sends nothing to its developer or anyone else. That matches the code: it has no server, and the only requests it makes are for up to 8 legal-looking pages linked from the page you're checking, sent without cookies (see "Linked pages" below). It's still your declaration to Mozilla, so read it before you submit.
 - **Version.** Each upload needs a higher `version` in `extension/manifest.json`.
 
+#### Just for yourself ("On your own")
+
+Pick **On your own** in step 4 and skip step 7: there's no public listing, and nobody can find or install it from AMO. Mozilla signs it (usually within 24 hours) and gives you a `.xpi` to drag into Firefox; it stays installed. Signing still means accepting Mozilla's [Add-on Distribution Agreement](https://extensionworkshop.com/documentation/publish/firefox-add-on-distribution-agreement/) and [Add-on Policies](https://extensionworkshop.com/documentation/publish/add-on-policies/), and Mozilla may review the code later. Keep the `.xpi` to yourself.
+
+How Tickwise meets the policies, checked against them on 9 November 2026:
+
+| Policy | Tickwise |
+|---|---|
+| 3.1 Reviewable source | Type-stripped, not minified or obfuscated; `tickwise-source.zip` and the build notes above. No third-party libraries. Fonts are under the SIL Open Font License (`fonts/OFL-LICENSE.txt`). |
+| 4 Only needed permissions | `activeTab` and `scripting` read the page you click on, `storage` keeps your Not OK choices. Other sites are optional, asked for one at a time when you click Allow. |
+| 4 No remote code | Everything is bundled. |
+| 6 Data transmission | Nothing is sent to the developer or anyone else. The only requests are for terms pages linked from the page, without cookies, when you click the icon. Declared as `"none"`. |
+| 6.3 Private browsing | In a private window, Tickwise doesn't save which sites you checked. |
+
+Notes for the reviewer (paste into the "Notes to reviewer" box):
+
+> Personal-use add-on, self-distributed. Build: Node 22.18 or newer, no npm install needed; run `npm run build`, the add-on is in `dist/firefox`. The build only strips TypeScript types (`scripts/build-web.ts`). `src/model-weights.ts` is data: the weights of a logistic-regression model trained by `eval/train-model.py`. No data is collected or sent; the only network requests are for legal pages linked from the current page, without cookies, after the user clicks the toolbar button. Other sites are read only after the user grants that one site through the Allow button (optional host permissions).
+
 ### Edge or Chrome (about one minute)
 
 1. Open **edge://extensions** in Edge, or **chrome://extensions** in Chrome.

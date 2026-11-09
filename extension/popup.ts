@@ -74,6 +74,8 @@ const main = document.getElementById("main") as HTMLElement;
 const pageLine = document.getElementById("page") as HTMLElement;
 
 let tabId: number | null = null;
+// A private window: nothing about the sites you check there is saved (Mozilla add-on policy 6.3).
+let incognito = false;
 let prefs: Prefs = {};
 let seen: Record<string, Seen> = {};
 let page: PageData | null = null;
@@ -204,6 +206,7 @@ async function start(): Promise<void> {
     const [tab] = await ext.tabs.query({ active: true, currentWindow: true });
     if (!tab || tab.id === undefined) throw new Error("No active tab.");
     tabId = tab.id as number;
+    incognito = !!tab.incognito;
     const results = await ext.scripting.executeScript({ target: { tabId }, func: grabPage });
     const result = results && results[0] && results[0].result;
     if (!result) throw new Error("The page returned nothing.");
@@ -318,6 +321,7 @@ async function loadObject<T extends object>(key: string): Promise<T> {
 }
 
 async function saveSeen(): Promise<void> {
+  if (incognito) return;
   try {
     seen = pruneSeen(seen, SEEN_MAX);
     await ext.storage.local.set({ [SEEN_KEY]: seen });
