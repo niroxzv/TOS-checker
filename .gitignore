@@ -3,5 +3,6 @@ eval/data/
 dist/
 .claude/
 *.zip
+*.xpi
 *.mp4
 *.webm
