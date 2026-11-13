@@ -1,6 +1,7 @@
 {
   "name": "tos-checker",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "Flags the parts of a terms of service that people should know about before they click accept.",

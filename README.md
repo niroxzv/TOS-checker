@@ -13,6 +13,12 @@ Not legal advice.
 
 ![A flag in the web app: the exact quote, then a safeguard to add, next to the highlighted document](docs/screenshots/app-flag.png)
 
+## Install in Firefox
+
+Download `tickwise.xpi` from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest) and open it in Firefox (or drag it onto a Firefox window), then click **Add**. It's signed by Mozilla, so it stays installed. It doesn't update by itself: download the new file when there's a new release.
+
+For Edge or Chrome, build it yourself and load it unpacked: see [docs/extension.md](docs/extension.md).
+
 ## Layout
 
 | Folder | What it is |
@@ -78,3 +84,7 @@ The data rules (location, selling data, AI training and so on) aren't in UNFAIR-
 - A negation anywhere in a clause cancels the whole rule for that clause ("we don't sell X, but we sell Y" is missed).
 - Lines copied from a PDF that wrap mid-sentence before a capital letter get split in two.
 - A clause that gives both sides the right to close an account is skipped by `unilateral_termination`.
+
+## Licence
+
+MIT, provided as is with no warranty: see [LICENSE](LICENSE). The fonts are under the SIL Open Font License.
