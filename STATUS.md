@@ -11,7 +11,7 @@
 - [x] Small trained model (`src/model.ts`): logistic regression over words, word pairs and which rules fired. It confirms or adds the 8 benchmark clause types, about 600 KB, and runs on the device. Retrain with `npm run train`.
 - [x] Disguised text doesn't hide a clause: hidden characters (soft hyphens, zero-width spaces), full-width letters and Latin words spelt with look-alike Cyrillic or Greek letters are read as plain text. Flags still quote the original.
 - [x] No slow patterns: 200 KB of hostile text (like "a.b.a.b." or thousands of blank lines) is checked in about 0.1 s. Before 7 Nov 2026 it took tens of seconds.
-- [x] All tests pass with `npm test` (251).
+- [x] All tests pass with `npm test` (258).
 
 ### Web app (`app/`)
 - [x] Paste the terms, open a file, or try a sample, then press Check (or Ctrl+Enter).
@@ -27,8 +27,8 @@
 - [x] **Badge and icons**: the toolbar icon shows the number of high-risk flags for that tab. Icons are drawn by `npm run icons`.
 - [x] **Changes since your last check**: each document says "First check", "No change since you checked …" or "Changed since you checked …: N new flags, M gone", and new flags are marked New. It compares flags, not the full text, and only when you click the icon.
 - [x] **Linked pages** are fetched without cookies. Links to localhost and home-network addresses are skipped, and each document is checked up to 500,000 characters.
-- [x] **Firefox build** in `dist/firefox` (add-on ID `tickwise@niroxzv`, Firefox 140 or newer). `npm run pack:firefox` and `npm run pack:source` make the two zips addons.mozilla.org asks for.
-- [x] **Tested in real Microsoft Edge 157 and Chrome 157.** `npm run test:extension` passes 51 of 51 checks in Edge and in Chrome for Testing 157.0.8103.38 (8 Nov 2026). The harness loads the extension, opens the popup with a real toolbar click on a fake sign-up page, and checks:
+- [x] **Firefox build** in `dist/firefox` (add-on ID `tickwise@niroxzv`, Firefox 140 or newer). Version 0.4.0 is signed by Mozilla (self-distributed, not listed on addons.mozilla.org) and attached to the [v0.4.0 release](https://github.com/niroxzv/TOS-checker/releases/tag/v0.4.0). `npm run pack:firefox` and `npm run pack:source` make the two zips addons.mozilla.org asks for.
+- [x] **Tested in real Microsoft Edge 157 and Chrome 157.** `npm run test:extension` passes 53 of 53 checks in Edge (9 Nov 2026). Chrome for Testing 157.0.8103.38 passed 51 of 51 on 8 Nov 2026 and wasn't rerun after. The harness loads the extension, opens the popup with a real toolbar click on a fake sign-up page, and checks:
   - the page, the selection and both linked pages, including one on another site after "Allow";
   - the merged report, "From: …" on every flag, and Not OK lowering the score;
   - the badge, the icons, Show on page and Open and show;
@@ -93,7 +93,7 @@
 ## To do
 
 - [x] Check the extension step by step in Firefox and Chrome (8 Nov 2026, see above). Still open: a person clicking the real toolbar button, since every run so far calls what the click runs.
-- [ ] Submit the Firefox build to addons.mozilla.org, so it installs and updates like any other add-on. Steps: `docs/extension.md`.
+- [x] Signed the Firefox build through addons.mozilla.org ("On your own") and published it as a GitHub release (14 Nov 2026). It doesn't update by itself: each new version needs a new upload and release. Steps: `docs/extension.md`.
 - [x] **Removed the desktop (Tauri) shell** (8 Nov 2026). It was never built or run. The project now focuses on the browser extension, with the web app for pasting or opening a document.
 - [x] Raise arbitration precision and unilateral-termination recall (8 Nov 2026, see "Accuracy").
 - [ ] More rules, for example children's data and in-app purchases.
