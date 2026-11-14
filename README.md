@@ -3,7 +3,7 @@
 Know what you're agreeing to before you tick. Tickwise reads a terms of service and flags what you should know before clicking accept: what data they take, who they give it to, what rights you give up, and what you can opt out of.
 
 - **Rule mode** (always on): hand-written rules plus a small trained model that double-checks them. The checking runs on your device with no AI server, and it is instant. Every flag points at the exact sentence it came from. (The browser extension also downloads the terms pages a site links to, so it can check them too.)
-- **AI mode** (optional): a small local model (tested: Qwen 3.5 4B/9B through Ollama; llama.cpp also works) reads only the clauses the rules pick out, writes a plain-English summary and catches what the rules missed. Every AI point must quote the text, and points whose quote isn't really in the document are thrown away.
+- **AI mode** (optional, web app only: the browser extension uses rule mode): a small local model (tested: Qwen 3.5 4B/9B through Ollama; llama.cpp also works) reads only the clauses the rules pick out, writes a plain-English summary and catches what the rules missed. Every AI point must quote the text, and points whose quote isn't really in the document are thrown away.
 
 Each kind of flag comes with one **Add**: a safeguard to put in place, shown once even if the same point comes up many times. The whole document gets a **boundary score** out of 100.
 
@@ -15,7 +15,7 @@ Not legal advice.
 
 ## Install in Firefox
 
-Download `tickwise.xpi` from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest) and open it in Firefox (or drag it onto a Firefox window), then click **Add**. It's signed by Mozilla, so it stays installed. It doesn't update by itself: download the new file when there's a new release.
+Download `tickwise.xpi` from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest) and open it in Firefox (or drag it onto a Firefox window), then click **Add**. It's signed by Mozilla, so it stays installed. The add-on uses rule mode only; AI mode is in the web app. It doesn't update by itself: download the new file when there's a new release.
 
 For Edge or Chrome, build it yourself and load it unpacked: see [docs/extension.md](docs/extension.md).
 
