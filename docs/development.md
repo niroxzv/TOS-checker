@@ -1,8 +1,77 @@
-# Project status: Tickwise
+# Developer notes
 
-## Done
+How Tickwise is built, tested and measured, and where the project stands. For using it, see the [README](../README.md).
 
-### Core engine (no AI)
+## Layout
+
+| Folder | What it is |
+|---|---|
+| `src/` | Rule engine: clause splitter, rules, `analyze()` |
+| `src/model.ts`, `src/model-weights.ts` | Small trained model (logistic regression) that confirms or adds the 8 benchmark clause types |
+| `src/advice.ts`, `src/score.ts` | The safeguard to add for each rule, and the boundary score |
+| `app/` | Web app: paste or open a document (plain HTML/CSS/TS) |
+| `extension/` | Browser extension (Firefox, Edge, Chrome) that checks the page you're on |
+| `scripts/` | Zero-dependency build (strips types) and dev server |
+| `test/`, `eval/` | Unit tests, and scoring against the UNFAIR-ToS dataset |
+| `docs/` | Guides, screenshots and the logo |
+
+## Run it
+
+Needs Node 22.18 or newer. Node runs the `.ts` files directly, so there's nothing to install.
+
+```bash
+npm test
+npm run analyze -- samples/sample-tos.txt
+npm run dev
+```
+
+`npm run dev` builds the UI and serves it at http://127.0.0.1:5173. `npm run build` writes `dist/app/` (web app), `dist/extension/` (load it unpacked in Edge or Chrome) and `dist/firefox/` (load it in Firefox from about:debugging).
+
+Building, testing and publishing the extension: [extension-dev.md](extension-dev.md).
+
+## How the rule engine works
+
+1. `src/split.ts` cuts the text into clauses (about one sentence each) and remembers where each one starts and ends.
+2. `src/rules.ts` holds the rules. Each one has `match` patterns, optional `unless` patterns for negations ("we do **not** sell"), a severity and a plain-English line.
+3. `src/engine.ts` runs every rule on every clause.
+4. `src/model.ts` then scores each clause with a logistic regression over its words and word pairs plus which rules fired. It drops rule flags the model does not back up, and adds clause types the rules missed. A type that a rule explicitly ruled out with `unless` is never added back.
+5. The result is the list of flags, most severe first.
+
+To retrain the model (Python with scikit-learn, for developers only): `npm run train`. To score the rules without the model: `npm run eval:rules`.
+
+### Add or fix a rule
+
+1. Put a sentence it should catch in `hits` and one it shouldn't in `misses` in `test/fixtures.ts`.
+2. Edit the rule in `src/rules.ts` until `npm test` passes.
+
+Every rule must have at least one hit and one miss, or the tests fail.
+
+## Measure it against real ToS (UNFAIR-ToS)
+
+[UNFAIR-ToS](https://huggingface.co/datasets/coastalcph/lex_glue) is a set of real ToS sentences labelled by lawyers with 8 kinds of unfair clause. The rules that cover one of those kinds have an `unfairTos` field.
+
+```bash
+npm run eval:fetch
+npm run eval
+npm run eval -- test --misses
+```
+
+The first command downloads the dataset to `eval/data/`. The model is trained on train + validation, so only the **test** split is a fair score. With LexGLUE scoring, the held-out test split gives 95.2% micro-F1 and 77.9% macro-F1. The published TF-IDF + SVM baseline gets 94.7 / 75.0, and Legal-BERT 96.0 / 83.0. Over the 8 unfair types alone, micro-F1 is 74.9%. `--misses` prints sentences the rules missed, which is the quickest way to find the next rule to write.
+
+The data rules (location, selling data, AI training and so on) aren't in UNFAIR-ToS. OPP-115, a set of privacy policies labelled by data practice, is the dataset to measure those against later.
+
+## Known limits
+
+- A negation anywhere in a clause cancels the whole rule for that clause ("we don't sell X, but we sell Y" is missed).
+- Lines copied from a PDF that wrap mid-sentence before a capital letter get split in two.
+- A clause that gives both sides the right to close an account is skipped by `unilateral_termination`.
+
+
+## Project status
+
+### Done
+
+#### Core engine (no AI)
 - [x] Sentence splitter that keeps exact positions, so every quote matches the document character for character.
 - [x] 21 rules across six areas: data collected, data shared, your content, your rights, money, and what you can do.
 - [x] Tuned on the UNFAIR-ToS benchmark: train and validation splits only, with the test split held out. Results are in "Accuracy" below.
@@ -13,21 +82,21 @@
 - [x] No slow patterns: 200 KB of hostile text (like "a.b.a.b." or thousands of blank lines) is checked in about 0.1 s. Before 7 Nov 2026 it took tens of seconds.
 - [x] All tests pass with `npm test` (258).
 
-### Web app (`app/`)
+#### Web app (`app/`)
 - [x] Paste the terms, open a file, or try a sample, then press Check (or Ctrl+Enter).
 - [x] Tickwise look: ivory paper, Redaction serif, uppercase mono labels, a dark score band with a verdict pill and a High / Med / Low tally, coral severity pills. Fonts are bundled, so nothing loads from the internet.
 - [x] Each flag shows what it means, the exact quote, a safeguard to add (once per kind of flag), and a Not OK button that makes it a dealbreaker. Your choice is saved and the score updates.
 - [x] Click a flag to jump to the highlighted sentence in the document.
 - [x] Tested in the browser with the sample: renders, no console errors.
 
-### Browser extension (`extension/`)
+#### Browser extension (`extension/`)
 - [x] Scans the current page, plus any text you've selected, plus the site's linked Terms, Privacy and Cookie pages, into one combined report.
 - [x] Same score, advice and dealbreakers as the app, sharing the same prefs key.
 - [x] **Show on page**: scrolls the page to a flagged sentence and highlights it. Flags from a linked page get **Open and show**, which opens that page at the sentence.
 - [x] **Badge and icons**: the toolbar icon shows the number of high-risk flags for that tab. Icons are drawn by `npm run icons`.
 - [x] **Changes since your last check**: each document says "First check", "No change since you checked …" or "Changed since you checked …: N new flags, M gone", and new flags are marked New. It compares flags, not the full text, and only when you click the icon.
 - [x] **Linked pages** are fetched without cookies. Links to localhost and home-network addresses are skipped, and each document is checked up to 500,000 characters.
-- [x] **Firefox build** in `dist/firefox` (add-on ID `tickwise@niroxzv`, Firefox 140 or newer). Version 0.4.0 is signed by Mozilla (self-distributed, not listed on addons.mozilla.org) and attached to the [v0.4.0 release](https://github.com/niroxzv/TOS-checker/releases/tag/v0.4.0). `npm run pack:firefox` and `npm run pack:source` make the two zips addons.mozilla.org asks for.
+- [x] **Firefox build** in `dist/firefox` (add-on ID `tickwise@niroxzv`, Firefox 140 or newer). Version 0.5.0 is signed by Mozilla (self-distributed, not listed on addons.mozilla.org) and attached to the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest). `npm run pack:firefox` and `npm run pack:source` make the two zips addons.mozilla.org asks for.
 - [x] **Tested in real Microsoft Edge 157 and Chrome 157.** `npm run test:extension` passes 53 of 53 checks in Edge (9 Nov 2026). Chrome for Testing 157.0.8103.38 passed 51 of 51 on 8 Nov 2026 and wasn't rerun after. The harness loads the extension, opens the popup with a real toolbar click on a fake sign-up page, and checks:
   - the page, the selection and both linked pages, including one on another site after "Allow";
   - the merged report, "From: …" on every flag, and Not OK lowering the score;
@@ -43,14 +112,14 @@
 - Not verified: answering the browser's own permission prompt in Edge and Chrome, because headless Edge and Chrome can't click it. In real use, the popup closes when the prompt opens. Accept the prompt and click the icon again. That second step is verified. In Firefox the prompt was answered and the page read, in the step-by-step check only.
 - Flaky: the last step (Allow on a never-granted site) timed out in the test harness on 2 of 4 runs (6 Nov 2026); the other checks passed every time.
 
-### AI mode (optional, local)
+#### AI mode (optional, local; hidden in the released app until it is finished)
 - [x] Works with **Ollama** (tested) or llama-server, using the OpenAI-compatible API, structured JSON output and thinking turned off. It finds the server and a Qwen model by itself.
 - [x] Every AI point must quote the document. Points whose quote isn't really in the text are thrown away.
 - [x] **Tested for real** with qwen3.5:4b and qwen3.5:9b on this PC.
   - In the web app with 9b: 37 s on the sample, and the summary was accurate.
   - Per document: 4b takes 11–17 s, 9b takes 38–56 s (9b doesn't fit fully in 8 GB of VRAM).
   - Invented quotes: 0–1 dropped per document.
-  - The details are in `eval/results-ai-docs.txt` and `docs/ai-mode.md`.
+  - The details are in `eval/results-ai-docs.txt` and [ai-mode.md](ai-mode.md).
 - [x] **Benchmarked against no-AI mode** (`npm run eval:ai`). The run used qwen3.5:9b on a balanced test subset: all 172 unfair sentences plus 172 fair ones.
 
   | On the same 344 sentences | Precision | Recall | Micro-F1 | Fair sentences flagged |
@@ -61,10 +130,10 @@
   The AI catches more, with higher recall, but wrongly flags about 1 in 5 fair sentences. That's why AI mode only **adds** checked points on top of the no-AI flags and never replaces them. The full table is in `eval/results-ai-test.txt`. It was measured before the 8 Nov 2026 rule changes, which moved the no-AI test scores by under one point.
 - [ ] Not done: the full 1,607-sentence AI run, any benchmark with 4b, and a real llama-server.
 
-### Demo video
+#### Demo video
 - [x] `scripts/record-demo.ts` records a captioned demo video in Edge, with no extra tools (`HEADED=1` to watch, `SPEED=2` for double speed).
 
-## Accuracy (UNFAIR-ToS test split: 1,607 sentences, never used for tuning or training)
+### Accuracy (UNFAIR-ToS test split: 1,607 sentences, never used for tuning or training)
 
 | Version | LexGLUE micro-F1 | LexGLUE macro-F1 | Micro-F1, 8 unfair types | Fair sentences wrongly flagged |
 |---|---|---|---|---|
@@ -90,7 +159,7 @@
   - Collecting biometrics now needs something done with the data, not just the word. Tracking now catches "actions you take on other sites"; "usage across your devices" (their own app on your phone and laptop) no longer counts.
 - Bigger variants (character n-grams, larger vocabularies) did not beat this model in cross-validation: all scored within 0.5 points. Plain-text models top out around here. The next real gain needs a transformer or the local LLM (see AI mode).
 
-## To do
+### To do
 
 - [x] Check the extension step by step in Firefox and Chrome (8 Nov 2026, see above). Still open: a person clicking the real toolbar button, since every run so far calls what the click runs.
 - [x] Signed the Firefox build through addons.mozilla.org ("On your own") and published it as a GitHub release (14 Nov 2026). It doesn't update by itself: each new version needs a new upload and release. Steps: `docs/extension-dev.md`.
@@ -99,13 +168,3 @@
 - [ ] More rules, for example children's data and in-app purchases.
 - [ ] Translate the advice into Chinese, Malay and Tamil.
 - [ ] Alert users when an app's terms change without them opening the page. Today the extension notices a change only when you click its icon on that page again.
-
-## Run it
-
-```bash
-npm test
-npm run build
-npm run serve
-```
-
-Then open http://127.0.0.1:5173. The extension is in `dist/extension` (Edge, Chrome) and `dist/firefox` (Firefox).

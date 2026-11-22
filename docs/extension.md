@@ -61,4 +61,4 @@ Terms often sit on another site (say, `legal.example.com`). Tickwise doesn't con
 - Some linked pages build their text with JavaScript; those come back mostly empty.
 - It reads what the words say, so it can miss points worded in unusual ways, and it can't judge whether a term is legal where you live.
 
-Building it yourself, testing and publishing: [extension-dev.md](extension-dev.md).
+For developers: [building, testing and publishing the extension](extension-dev.md).

@@ -1,93 +1,60 @@
 # Tickwise
 
-Know what you're agreeing to before you tick. Tickwise reads a terms of service and flags what you should know before clicking accept: what data they take, who they give it to, what rights you give up, and what you can opt out of.
+Know what you're agreeing to before you tick. Tickwise reads a terms of service or privacy policy and tells you, in plain English, what you should know before clicking accept: what data they take, who they give it to, what rights you give up, what you pay, and what you can opt out of.
 
-It uses hand-written rules plus a small trained model that double-checks them. The checking runs on your device with no AI server, and it is instant. Every flag points at the exact sentence it came from. The browser extension also downloads the terms pages a site links to, so it can check them too.
-
-A local AI mode that writes a plain-English summary is planned for a future update.
-
-Each kind of flag comes with one **Add**: a safeguard to put in place, shown once even if the same point comes up many times. The whole document gets a **boundary score** out of 100.
+Every point quotes the exact sentence it came from, comes with one safeguard to **Add**, and the whole document gets a **boundary score** out of 100.
 
 Not legal advice.
 
 ![The extension on a sign-up page: a boundary score of 22 out of 100, from the page and the two policies it links to](docs/screenshots/extension-in-context.png)
 
-![A flag in the web app: the exact quote, then a safeguard to add, next to the highlighted document](docs/screenshots/app-flag.png)
+## Try it online
 
-**Try it online:** https://niroxzv.github.io/TOS-checker/ (paste some terms and press Check; it all runs in your browser).
+https://niroxzv.github.io/TOS-checker/
 
-## Install the extension
+Paste some terms, open a file, or try the sample, then press **Check**. It all runs in your browser: nothing you paste is uploaded.
 
-Download from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest):
+![A point in the web app: the exact quote, then a safeguard to add, next to the highlighted document](docs/screenshots/app-flag.png)
+
+## Install the browser extension
+
+The extension checks the page you're on, plus the Terms, Privacy and Cookie pages it links to. Download it from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest):
 
 - **Firefox:** `tickwise.xpi`. Open it in Firefox (or drag it onto a Firefox window), then click **Add**. It's signed by Mozilla, so it stays installed.
 - **Edge or Chrome:** `tickwise-extension.zip`. Unzip it, open `edge://extensions` or `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped folder.
 
-It doesn't update by itself: download the new file when there's a new release. How to use it: [docs/extension.md](docs/extension.md).
+It doesn't update by itself: download the new file when there's a new release. How to use it: [the extension guide](docs/extension.md).
 
-## Layout
+## How it works
 
-| Folder | What it is |
-|---|---|
-| `src/` | Rule engine: clause splitter, rules, `analyze()` |
-| `src/model.ts`, `src/model-weights.ts` | Small trained model (logistic regression) that confirms or adds the 8 benchmark clause types |
-| `src/advice.ts`, `src/score.ts` | The safeguard to add for each rule, and the boundary score |
-| `app/` | Web app: paste or open a document (plain HTML/CSS/TS) |
-| `extension/` | Browser extension (Firefox, Edge, Chrome) that checks the page you're on |
-| `scripts/` | Zero-dependency build (strips types) and dev server |
-| `test/`, `eval/` | Unit tests, and scoring against the UNFAIR-ToS dataset |
-| `docs/` | Extension guides, screenshots and the logo |
+Tickwise uses hand-written rules plus a small trained model that double-checks them. Both run on your device, with no AI and no server, so a check is instant and your documents stay with you.
 
-## Run it
+It reads for points in six areas: data collected, data shared, your content, your rights, money, and what you can do about it. Points are sorted by risk, and repeats of the same point are folded together so you only read each one once. Mark a point **Not OK** to make it a dealbreaker: it moves to the top, lowers the score, and stays marked on every document you check.
 
-Needs Node 22.18 or newer. Node runs the `.ts` files directly, so there's nothing to install.
+## How accurate it is
 
-```bash
-npm test
-npm run analyze -- samples/sample-tos.txt
-npm run dev
-```
+Tickwise was measured on [UNFAIR-ToS](https://huggingface.co/datasets/coastalcph/lex_glue), a set of real terms of service sentences labelled by lawyers. On sentences it was never trained or tuned on, it scores 95.2% (micro-F1, the usual score for this dataset). A standard published approach scores 94.7%, and a large legal language model, far too big to run in a browser extension, scores 96.0%.
 
-`npm run dev` builds the UI and serves it at http://127.0.0.1:5173. `npm run build` writes `dist/app/` (web app), `dist/extension/` (load it unpacked in Edge or Chrome) and `dist/firefox/` (load it in Firefox from about:debugging).
+In plain terms: it wrongly flags about 2 in 100 harmless sentences, and on the unfair kinds of clause it finds about 3 in 4. So treat it as a quick first read, and read the full terms for anything that matters.
 
-- Browser extension: [docs/extension.md](docs/extension.md) (using it), [docs/extension-dev.md](docs/extension-dev.md) (building, testing, publishing)
+## Privacy
 
-## How the rule engine works
+- The web app and the extension run entirely in your browser. Nothing is sent to the developer or anyone else, and there's no account.
+- The extension only reads a page when you click its icon. It fetches linked terms pages without your cookies, and asks before it contacts another site.
+- Your choices are kept in your browser only.
 
-1. `src/split.ts` cuts the text into clauses (about one sentence each) and remembers where each one starts and ends.
-2. `src/rules.ts` holds the rules. Each one has `match` patterns, optional `unless` patterns for negations ("we do **not** sell"), a severity and a plain-English line.
-3. `src/engine.ts` runs every rule on every clause.
-4. `src/model.ts` then scores each clause with a logistic regression over its words and word pairs plus which rules fired. It drops rule flags the model does not back up, and adds clause types the rules missed. A type that a rule explicitly ruled out with `unless` is never added back.
-5. The result is the list of flags, most severe first.
+## Limits
 
-To retrain the model (Python with scikit-learn, for developers only): `npm run train`. To score the rules without the model: `npm run eval:rules`.
+- It reads what the words say, so it can miss points worded in unusual ways, and it can't tell you whether a term is legal where you live.
+- A sentence that mixes a "we don't" with a "we do" can be missed.
+- Text copied from a PDF can split sentences in odd places.
+- The extension can't read browser pages or the add-on stores, and misses terms inside frames.
 
-### Add or fix a rule
+A local AI mode that writes a plain-English summary is planned for a future update.
 
-1. Put a sentence it should catch in `hits` and one it shouldn't in `misses` in `test/fixtures.ts`.
-2. Edit the rule in `src/rules.ts` until `npm test` passes.
+## For developers
 
-Every rule must have at least one hit and one miss, or the tests fail.
-
-## Measure it against real ToS (UNFAIR-ToS)
-
-[UNFAIR-ToS](https://huggingface.co/datasets/coastalcph/lex_glue) is a set of real ToS sentences labelled by lawyers with 8 kinds of unfair clause. The rules that cover one of those kinds have an `unfairTos` field.
-
-```bash
-npm run eval:fetch
-npm run eval
-npm run eval -- test --misses
-```
-
-The first command downloads the dataset to `eval/data/`. The model is trained on train + validation, so only the **test** split is a fair score. With LexGLUE scoring, the held-out test split gives 95.2% micro-F1 and 77.9% macro-F1. The published TF-IDF + SVM baseline gets 94.7 / 75.0, and Legal-BERT 96.0 / 83.0. Over the 8 unfair types alone, micro-F1 is 74.9%. `--misses` prints sentences the rules missed, which is the quickest way to find the next rule to write.
-
-The data rules (location, selling data, AI training and so on) aren't in UNFAIR-ToS. OPP-115, a set of privacy policies labelled by data practice, is the dataset to measure those against later.
-
-## Known limits
-
-- A negation anywhere in a clause cancels the whole rule for that clause ("we don't sell X, but we sell Y" is missed).
-- Lines copied from a PDF that wrap mid-sentence before a capital letter get split in two.
-- A clause that gives both sides the right to close an account is skipped by `unilateral_termination`.
+How it's built, how to run and test it, how to add a rule, and the full accuracy results: [docs/development.md](docs/development.md).
 
 ## Licence
 

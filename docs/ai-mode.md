@@ -1,5 +1,7 @@
 # AI mode: a local model through Ollama (tested) or llama-server
 
+> **Developer preview.** AI mode is in the web app only, and is hidden in the released version until it is finished. This page is for developers running Tickwise from source: to turn it on, remove the `settings.aiMode = false;` line in `app/main.ts` and the `hidden` attributes on the AI switch and the AI settings in `app/index.html`. See [development.md](development.md).
+
 AI mode sends the clauses the rules flagged (plus clauses with broad keywords such as "data", "share", "arbitration" or "renew", up to about 8,000 characters) to a small model on your own PC. The model returns a short summary and extra points. A point is kept only if its quote really appears in the clause it names.
 
 Two things to know:
