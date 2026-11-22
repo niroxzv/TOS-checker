@@ -14,6 +14,8 @@ Not legal advice.
 
 ![A flag in the web app: the exact quote, then a safeguard to add, next to the highlighted document](docs/screenshots/app-flag.png)
 
+**Try it online:** https://niroxzv.github.io/TOS-checker/ (paste some terms and press Check; it all runs in your browser).
+
 ## Install in Firefox
 
 Download `tickwise.xpi` from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest) and open it in Firefox (or drag it onto a Firefox window), then click **Add**. It's signed by Mozilla, so it stays installed. It doesn't update by itself: download the new file when there's a new release.
