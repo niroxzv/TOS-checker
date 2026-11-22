@@ -1,5 +1,6 @@
-// Draws the Tickwise icon (an ink rounded square with a lime tick) as PNGs for the extension, with no
-// dependencies: each pixel is supersampled 6 x 6 and written with node:zlib.
+// Draws the Tickwise icon (three lines of text, the middle one highlighted in lime, on an ink rounded square) as
+// PNGs for the extension, with no dependencies: each pixel is supersampled 6 x 6 and written with node:zlib.
+// The shapes match LOGO_SVG in app/index.html and extension/popup.html.
 //
 //   node scripts/make-icons.ts      -> extension/icons/icon-{16,32,48,96,128}.png
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -7,21 +8,33 @@ import { join } from "node:path";
 import { crc32, deflateSync } from "node:zlib";
 
 const OUT = join(import.meta.dirname, "..", "extension", "icons");
-const INK = [0x14, 0x14, 0x13];
-const LIME = [0x9d, 0xb3, 0x3a];
-/** The tick, in the square's own 0..1 space (the same path as the logo in the app). */
-const TICK: [number, number][] = [[0.22, 0.53], [0.42, 0.72], [0.78, 0.31]];
+type RGB = [number, number, number];
+const INK: RGB = [0x14, 0x14, 0x13];
+const LIME: RGB = [0xb5, 0xcc, 0x45];
+const GREY: RGB = [0x6e, 0x6c, 0x64];
 const SAMPLES = 6;
+
+/** In the logo's 32 x 32 space, painted in order (later shapes on top). */
+type Shape = { color: RGB; rect: [number, number, number, number, number] };
+const SHAPES: Shape[] = [
+  { color: INK, rect: [0, 0, 32, 32, 7] },
+  { color: GREY, rect: [7, 7.5, 18, 3, 1.5] },
+  { color: LIME, rect: [5.5, 13.5, 21, 5, 1.5] },
+  { color: GREY, rect: [7, 21.5, 13, 3, 1.5] },
+];
 
 /** Transparent margin around the square, in pixels; store icons want room at 128. */
 const MARGIN: Record<number, number> = { 16: 0, 32: 1, 48: 2, 96: 4, 128: 10 };
 
+function colorAt(x: number, y: number): RGB | null {
+  let c: RGB | null = null;
+  for (const s of SHAPES) if (inRoundedRect(x, y, ...s.rect)) c = s.color;
+  return c;
+}
+
 function draw(size: number): Buffer {
   const m = MARGIN[size] ?? 0;
-  const side = size - 2 * m;
-  const radius = side * 0.22;
-  // Thicker at 16px so the tick survives the toolbar.
-  const half = (side * (size <= 16 ? 0.15 : 0.13)) / 2;
+  const scale = 32 / (size - 2 * m);
   const rows: Buffer[] = [];
   for (let y = 0; y < size; y++) {
     const row = Buffer.alloc(1 + size * 4); // filter byte 0, then RGBA
@@ -29,10 +42,8 @@ function draw(size: number): Buffer {
       let r = 0, g = 0, b = 0, hits = 0;
       for (let sy = 0; sy < SAMPLES; sy++) {
         for (let sx = 0; sx < SAMPLES; sx++) {
-          const px = x + (sx + 0.5) / SAMPLES - m;
-          const py = y + (sy + 0.5) / SAMPLES - m;
-          if (!inRoundedSquare(px, py, side, radius)) continue;
-          const c = nearPolyline(px / side, py / side, half / side) ? LIME : INK;
+          const c = colorAt((x + (sx + 0.5) / SAMPLES - m) * scale, (y + (sy + 0.5) / SAMPLES - m) * scale);
+          if (!c) continue;
           r += c[0]; g += c[1]; b += c[2]; hits++;
         }
       }
@@ -49,22 +60,11 @@ function draw(size: number): Buffer {
   return png(size, size, Buffer.concat(rows));
 }
 
-function inRoundedSquare(x: number, y: number, side: number, r: number): boolean {
-  if (x < 0 || y < 0 || x > side || y > side) return false;
-  const cx = Math.min(Math.max(x, r), side - r);
-  const cy = Math.min(Math.max(y, r), side - r);
+function inRoundedRect(x: number, y: number, rx: number, ry: number, w: number, h: number, r: number): boolean {
+  if (x < rx || y < ry || x > rx + w || y > ry + h) return false;
+  const cx = Math.min(Math.max(x, rx + r), rx + w - r);
+  const cy = Math.min(Math.max(y, ry + r), ry + h - r);
   return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
-}
-
-/** Within `half` of the tick's line segments: round caps and joins come for free. */
-function nearPolyline(x: number, y: number, half: number): boolean {
-  for (let i = 0; i < TICK.length - 1; i++) {
-    const [ax, ay] = TICK[i];
-    const [bx, by] = TICK[i + 1];
-    const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)));
-    if ((x - ax - t * (bx - ax)) ** 2 + (y - ay - t * (by - ay)) ** 2 <= half * half) return true;
-  }
-  return false;
 }
 
 function png(width: number, height: number, raw: Buffer): Buffer {
