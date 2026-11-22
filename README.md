@@ -1,61 +1,65 @@
 # Tickwise
 
-Know what you're agreeing to before you tick. Tickwise reads a terms of service or privacy policy and tells you, in plain English, what you should know before clicking accept: what data they take, who they give it to, what rights you give up, what you pay, and what you can opt out of.
+Know what you are agreeing to before you tick.
 
-Every point quotes the exact sentence it came from, comes with one safeguard to **Add**, and the whole document gets a **boundary score** out of 100.
+Tickwise reviews a terms of service or privacy policy and explains, in plain English, the points to be aware of before accepting: the data collected, who it is shared with, the rights given up, the charges involved, and the choices available to opt out.
 
-Not legal advice.
+Each point quotes the exact sentence it is based on and includes one recommended safeguard. Each document receives a boundary score out of 100.
 
-![The extension on a sign-up page: a boundary score of 22 out of 100, from the page and the two policies it links to](docs/screenshots/extension-in-context.png)
+Tickwise does not provide legal advice.
 
-## Try it online
+![The Tickwise extension on a sign-up page, showing a boundary score of 22 out of 100 drawn from the page and the two policies it links to](docs/screenshots/extension-in-context.png)
 
-https://niroxzv.github.io/TOS-checker/
+## Web app
 
-Paste some terms, open a file, or try the sample, then press **Check**. It all runs in your browser: nothing you paste is uploaded.
+Use Tickwise in the browser at **https://niroxzv.github.io/TOS-checker/**.
 
-![A point in the web app: the exact quote, then a safeguard to add, next to the highlighted document](docs/screenshots/app-flag.png)
+Paste a document, open a file or load the sample, then select **Check**. All processing takes place in the browser; no text is uploaded.
 
-## Install the browser extension
+![A point in the web app: the quoted sentence and the recommended safeguard, beside the highlighted document](docs/screenshots/app-flag.png)
 
-The extension checks the page you're on, plus the Terms, Privacy and Cookie pages it links to. Download it from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest):
+## Browser extension
 
-- **Firefox:** `tickwise.xpi`. Open it in Firefox (or drag it onto a Firefox window), then click **Add**. It's signed by Mozilla, so it stays installed.
-- **Edge or Chrome:** `tickwise-extension.zip`. Unzip it, open `edge://extensions` or `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped folder.
+The extension reviews the page currently open, together with the Terms, Privacy and Cookie pages it links to. Download it from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest).
 
-It doesn't update by itself: download the new file when there's a new release. How to use it: [the extension guide](docs/extension.md).
+| Browser | File | Installation |
+|---|---|---|
+| Firefox | `tickwise.xpi` | Open the file in Firefox, or drag it onto a Firefox window, and select **Add**. The add-on is signed by Mozilla. |
+| Edge or Chrome | `tickwise-extension.zip` | Unzip the file, open `edge://extensions` or `chrome://extensions`, enable **Developer mode**, select **Load unpacked** and choose the unzipped folder. |
+
+The extension does not update automatically. To update, download and install the file from the newest release. Full instructions are in the [extension guide](docs/extension.md).
 
 ## How it works
 
-Tickwise uses hand-written rules plus a small trained model that double-checks them. Both run on your device, with no AI and no server, so a check is instant and your documents stay with you.
+Tickwise combines a set of hand-written rules with a small trained model that verifies their results. Both run locally on the device, without an AI service or a server, so results are immediate and documents remain private.
 
-It reads for points in six areas: data collected, data shared, your content, your rights, money, and what you can do about it. Points are sorted by risk, and repeats of the same point are folded together so you only read each one once. Mark a point **Not OK** to make it a dealbreaker: it moves to the top, lowers the score, and stays marked on every document you check.
+Points are grouped into six areas: data collected, data shared, your content, your rights, money, and your options. They are ordered by risk, and repeated occurrences of the same point are combined. A point marked **Not OK** becomes a dealbreaker: it is listed first, lowers the score and remains marked on every document reviewed afterwards.
 
-## How accurate it is
+## Accuracy
 
-Tickwise was measured on [UNFAIR-ToS](https://huggingface.co/datasets/coastalcph/lex_glue), a set of real terms of service sentences labelled by lawyers. On sentences it was never trained or tuned on, it scores 95.2% (micro-F1, the usual score for this dataset). A standard published approach scores 94.7%, and a large legal language model, far too big to run in a browser extension, scores 96.0%.
+Tickwise has been evaluated on [UNFAIR-ToS](https://huggingface.co/datasets/coastalcph/lex_glue), a public dataset of terms of service sentences labelled by legal experts. On sentences excluded from training and tuning, it achieves a micro-F1 score of 95.2%. For comparison, a standard published baseline achieves 94.7%, and a large legal language model, too large to run in a browser extension, achieves 96.0%.
 
-In plain terms: it wrongly flags about 2 in 100 harmless sentences, and on the unfair kinds of clause it finds about 3 in 4. So treat it as a quick first read, and read the full terms for anything that matters.
+In practice, Tickwise incorrectly flags about 2 in 100 acceptable sentences and identifies about 3 in 4 unfair clauses. It is intended as a first review and does not replace reading the full terms.
 
 ## Privacy
 
-- The web app and the extension run entirely in your browser. Nothing is sent to the developer or anyone else, and there's no account.
-- The extension only reads a page when you click its icon. It fetches linked terms pages without your cookies, and asks before it contacts another site.
-- Your choices are kept in your browser only.
+- The web app and the extension run entirely in the browser. No data is sent to the developer or to any third party, and no account is required.
+- The extension reads a page only when its icon is selected. Linked terms pages are retrieved without cookies, and permission is requested before any other website is contacted.
+- Preferences are stored only in the browser.
 
-## Limits
+## Limitations
 
-- It reads what the words say, so it can miss points worded in unusual ways, and it can't tell you whether a term is legal where you live.
-- A sentence that mixes a "we don't" with a "we do" can be missed.
-- Text copied from a PDF can split sentences in odd places.
-- The extension can't read browser pages or the add-on stores, and misses terms inside frames.
+- Tickwise analyses wording. Clauses phrased in unusual ways may be missed, and it cannot determine whether a term is enforceable in a given jurisdiction.
+- A sentence that combines a denial and a permission (for example, "we do not sell X, but we sell Y") may be missed.
+- Text copied from PDF files may be split into sentences incorrectly.
+- The extension cannot read browser pages or add-on store pages, and does not read terms displayed inside frames.
 
-A local AI mode that writes a plain-English summary is planned for a future update.
+A local AI mode that produces a plain-English summary is planned for a future release.
 
-## For developers
+## Development
 
-How it's built, how to run and test it, how to add a rule, and the full accuracy results: [docs/development.md](docs/development.md).
+Information on the code structure, building, testing, adding rules and the full evaluation results is available in [docs/development.md](docs/development.md).
 
 ## Licence
 
-MIT, provided as is with no warranty: see [LICENSE](LICENSE). The fonts are under the SIL Open Font License.
+Released under the MIT Licence and provided as is, without warranty. See [LICENSE](LICENSE). The bundled fonts are licensed under the SIL Open Font License.
