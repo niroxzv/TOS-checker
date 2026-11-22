@@ -124,6 +124,8 @@ const aiUrlEl = byId("ai-url");
 // ---------- state ----------
 const prefs: Prefs = load<Prefs>(PREFS_KEY, {});
 const settings: Settings = load(SETTINGS_KEY, DEFAULT_SETTINGS);
+// AI mode is hidden until a future update (the toggle and settings are hidden in index.html), so it stays off.
+settings.aiMode = false;
 let checkedText = "";
 let ruleFlags: Flag[] = [];
 let items: Item[] = [];
