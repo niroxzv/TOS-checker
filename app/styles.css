@@ -1,6 +1,5 @@
 /* Tickwise: the editorial look from the pitch deck. Ivory paper, ink, Redaction serif, mono labels.
    Coral marks risk and nothing else; the lime highlighter sits behind quoted words. */
-@font-face { font-family: "Redaction 10"; src: url("fonts/redaction-10-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Redaction"; src: url("fonts/redaction-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Redaction"; src: url("fonts/redaction-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 @font-face { font-family: "Redaction"; src: url("fonts/redaction-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
@@ -12,8 +11,8 @@
   --bg: #FAF9F5; --card: #E8E6DC; --paper: #F2EEE5; --fg: #141413; --ink-2: #262624;
   --muted: #5E5D59; --muted-d: #B0AEA5; --rule: rgba(20,20,19,.14); --rule-d: rgba(250,249,245,.16);
   --lime: #E1EAA4; --coral: #FF5A36; --flash: #FFD24A;
-  --display: "Redaction 10", "Redaction", "Times New Roman", Georgia, serif;
-  --serif: "Redaction", "Redaction 10", "Times New Roman", Georgia, serif;
+  --display: "Redaction", "Times New Roman", Georgia, serif;
+  --serif: "Redaction", "Times New Roman", Georgia, serif;
   --mono: "Mono Local", "IBM Plex Mono", ui-monospace, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
@@ -121,9 +120,9 @@ button.primary:hover { background: var(--ink-2); color: var(--bg); }
 .card.is-dealbreaker .say { text-decoration: underline; text-decoration-color: var(--coral); text-decoration-thickness: 3px; text-underline-offset: 5px; }
 .quote { margin: 0; font: italic 400 16px/1.5 var(--serif); color: var(--muted); max-width: 62ch; overflow-wrap: anywhere; }
 .quote::before { content: "\201C"; } .quote::after { content: "\201D"; }
-.moves { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: 0 14px; margin: 16px 0 0; font-size: 16px; max-width: 64ch; }
+.moves { display: grid; grid-template-columns: calc(5rem + 14px) minmax(0, 1fr); gap: 0; margin: 16px 0 0; font-size: 16px; max-width: 64ch; }
 .moves dt, .moves dd { padding: 9px 0; border-top: 1px solid var(--rule); margin: 0; }
-.moves dt { color: var(--muted); padding-top: 12px; }
+.moves dt { color: var(--muted); padding-top: 12px; padding-right: 14px; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .choice { min-height: 40px; font-size: 15px; padding: 0 18px; }
 .choice-notok[aria-pressed="true"] { background: var(--coral); border-color: var(--coral); color: #141413; }
@@ -149,7 +148,7 @@ footer { padding: 18px 0 32px; border-top: 1px solid var(--rule); color: var(--m
 
 @keyframes mark-flash { 0%, 35% { background: var(--flash); box-shadow: 0 0 0 3px var(--flash); } 100% { box-shadow: 0 0 0 3px transparent; } }
 @keyframes card-flash { 0%, 35% { background: color-mix(in srgb, var(--lime) 60%, transparent); } 100% { background: transparent; } }
-.smaller > summary { margin-top: 18px; padding: 16px 0; font: 700 18px/1.2 var(--serif); cursor: pointer; border-top: 1px solid var(--fg); border-bottom: 1px solid var(--rule); }
+.smaller > summary { position: relative; margin-top: -1px; padding: 16px 0; font: 700 18px/1.2 var(--serif); cursor: pointer; border-top: 1px solid var(--fg); border-bottom: 1px solid var(--rule); }
 .more > summary { padding: 12px 0; font: 600 13px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 1px solid var(--rule); }
 .more[open] > summary { color: var(--fg); }
 .card.flash { animation: card-flash 1.6s ease-out; }

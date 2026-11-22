@@ -628,7 +628,6 @@ function buildPlan(end: number) {
 
 // The recorder page: draws each planned frame with its caption and records the canvas in real time.
 const RECORDER_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>recorder</title><style>
-@font-face { font-family: "Redaction 10"; src: url("/fonts/redaction-10-latin-400-normal.woff2") format("woff2"); }
 @font-face { font-family: "Redaction"; src: url("/fonts/redaction-latin-400-normal.woff2") format("woff2"); font-weight: 400; }
 @font-face { font-family: "Mono Local"; src: url("/fonts/IBMPlexMono-600.woff2") format("woff2"); font-weight: 600; }
 html, body { margin: 0; background: #141413; }
@@ -637,7 +636,7 @@ const W = 1600, H = 900, PH = 810;
 const INK = "#141413", IVORY = "#FAF9F5", SLATE = "#5E5D59", LIME = "#E1EAA4", TICK = "#9DB33A";
 const c = document.getElementById("c"), g = c.getContext("2d");
 const ARROW = new Path2D("M4 3 L4 22 L9.2 17.2 L12.6 25 L16.2 23.4 L12.8 15.8 L19.8 15.8 Z");
-await Promise.all(['400 40px "Redaction 10"', '400 30px "Redaction"', '600 16px "Mono Local"'].map((f) => document.fonts.load(f)));
+await Promise.all(['400 30px "Redaction"', '600 16px "Mono Local"'].map((f) => document.fonts.load(f)));
 const { fps, frames } = await (await fetch("/__plan.json")).json();
 
 const lastUse = new Map();
@@ -688,7 +687,7 @@ function card([title, sub, foot], k, n) {
   g.fillStyle = IVORY; g.fillRect(0, 0, W, H);
   g.globalAlpha = Math.max(0, Math.min(1, k / 12, (n - k) / 12));
   logo(150, 268, 112, INK);
-  g.fillStyle = INK; g.textBaseline = "alphabetic"; g.font = '400 132px "Redaction 10"'; g.fillText(title, 300, 372);
+  g.fillStyle = INK; g.textBaseline = "alphabetic"; g.font = '400 132px "Redaction"'; g.fillText(title, 300, 372);
   g.font = '400 44px "Redaction"';
   const w = g.measureText(sub).width;
   g.fillStyle = LIME; g.fillRect(150, 448, w + 24, 62);

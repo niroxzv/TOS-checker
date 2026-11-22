@@ -1,6 +1,5 @@
 /* Tickwise at popup size (tokens match app/styles.css). One loud element, the dark score band;
    the rest is ivory paper, serif text, uppercase mono labels and hairline rules. Coral only means risk. */
-@font-face { font-family: "Redaction 10"; src: url("fonts/redaction-10-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Redaction"; src: url("fonts/redaction-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Redaction"; src: url("fonts/redaction-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 @font-face { font-family: "Redaction"; src: url("fonts/redaction-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
@@ -12,8 +11,8 @@
   --bg: #FAF9F5; --card: #E8E6DC; --paper: #F2EEE5; --fg: #141413;
   --muted: #5E5D59; --muted-d: #B0AEA5; --rule: rgba(20,20,19,.14); --rule-d: rgba(250,249,245,.16);
   --lime: #E1EAA4; --coral: #FF5A36;
-  --display: "Redaction 10", "Redaction", "Times New Roman", Georgia, serif;
-  --serif: "Redaction", "Redaction 10", "Times New Roman", Georgia, serif;
+  --display: "Redaction", "Times New Roman", Georgia, serif;
+  --serif: "Redaction", "Times New Roman", Georgia, serif;
   --mono: "Mono Local", "IBM Plex Mono", ui-monospace, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
