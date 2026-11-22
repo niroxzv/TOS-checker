@@ -16,11 +16,14 @@ Not legal advice.
 
 **Try it online:** https://niroxzv.github.io/TOS-checker/ (paste some terms and press Check; it all runs in your browser).
 
-## Install in Firefox
+## Install the extension
 
-Download `tickwise.xpi` from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest) and open it in Firefox (or drag it onto a Firefox window), then click **Add**. It's signed by Mozilla, so it stays installed. It doesn't update by itself: download the new file when there's a new release.
+Download from the [latest release](https://github.com/niroxzv/TOS-checker/releases/latest):
 
-For Edge or Chrome, build it yourself and load it unpacked: see [docs/extension.md](docs/extension.md).
+- **Firefox:** `tickwise.xpi`. Open it in Firefox (or drag it onto a Firefox window), then click **Add**. It's signed by Mozilla, so it stays installed.
+- **Edge or Chrome:** `tickwise-extension.zip`. Unzip it, open `edge://extensions` or `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the unzipped folder.
+
+It doesn't update by itself: download the new file when there's a new release. How to use it: [docs/extension.md](docs/extension.md).
 
 ## Layout
 
@@ -33,7 +36,7 @@ For Edge or Chrome, build it yourself and load it unpacked: see [docs/extension.
 | `extension/` | Browser extension (Firefox, Edge, Chrome) that checks the page you're on |
 | `scripts/` | Zero-dependency build (strips types) and dev server |
 | `test/`, `eval/` | Unit tests, and scoring against the UNFAIR-ToS dataset |
-| `docs/` | Setup guide for the extension |
+| `docs/` | Extension guides, screenshots and the logo |
 
 ## Run it
 
@@ -47,7 +50,7 @@ npm run dev
 
 `npm run dev` builds the UI and serves it at http://127.0.0.1:5173. `npm run build` writes `dist/app/` (web app), `dist/extension/` (load it unpacked in Edge or Chrome) and `dist/firefox/` (load it in Firefox from about:debugging).
 
-- Browser extension: [docs/extension.md](docs/extension.md)
+- Browser extension: [docs/extension.md](docs/extension.md) (using it), [docs/extension-dev.md](docs/extension-dev.md) (building, testing, publishing)
 
 ## How the rule engine works
 

@@ -35,7 +35,7 @@
   - a Privacy Policy that changes between two checks;
   - linked pages fetched without the site's login cookie, and a link to `router.local` skipped.
 - [x] **Tested in real Firefox 159.** `npm run test:firefox` passes 9 of 9 checks (8 Nov 2026): install, the toolbar action, the report, the badge, and Show on page.
-- [x] **Checked step by step in Firefox and Chrome** (8 Nov 2026), from a script with the screenshots checked by eye: the popup, dark and light mode, Show on page, Open and show, and Allow with the browser's own prompt. Details: `docs/extension.md`.
+- [x] **Checked step by step in Firefox and Chrome** (8 Nov 2026), from a script with the screenshots checked by eye: the popup, dark and light mode, Show on page, Open and show, and Allow with the browser's own prompt. Details: `docs/extension-dev.md`.
   - It found a Firefox bug, now fixed: after Allow, a plain-http page on another site still couldn't be read, because Firefox sends the popup's request over https. Allow now asks for http and https.
   - In Firefox, a terms page on another site that only works over plain http still can't be read from the popup.
 - [x] Popup restyled to the same Tickwise look, with the fonts bundled in the extension. Screenshots are in `docs/screenshots/`.
@@ -93,7 +93,7 @@
 ## To do
 
 - [x] Check the extension step by step in Firefox and Chrome (8 Nov 2026, see above). Still open: a person clicking the real toolbar button, since every run so far calls what the click runs.
-- [x] Signed the Firefox build through addons.mozilla.org ("On your own") and published it as a GitHub release (14 Nov 2026). It doesn't update by itself: each new version needs a new upload and release. Steps: `docs/extension.md`.
+- [x] Signed the Firefox build through addons.mozilla.org ("On your own") and published it as a GitHub release (14 Nov 2026). It doesn't update by itself: each new version needs a new upload and release. Steps: `docs/extension-dev.md`.
 - [x] **Removed the desktop (Tauri) shell** (8 Nov 2026). It was never built or run. The project now focuses on the browser extension, with the web app for pasting or opening a document.
 - [x] Raise arbitration precision and unilateral-termination recall (8 Nov 2026, see "Accuracy").
 - [ ] More rules, for example children's data and in-app purchases.
